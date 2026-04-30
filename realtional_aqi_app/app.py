@@ -52,6 +52,14 @@ def fetch_data_week(lat, lon):
     weather_res = requests.get(weather_url, params=weather_params).json()
     aqi_res = requests.get(aqi_url, params=aqi_params).json()
 
+    if "hourly" not in weather_res:
+        error_msg = weather_res.get("reason", "Unknown weather API error")
+        raise Exception(f"Weather API Error: {error_msg}")
+    
+    if "hourly" not in aqi_res:
+        error_msg = aqi_res.get("reason", "Unknown AQI API error")
+        raise Exception(f"AQI API Error: {error_msg}")
+
     df_weather = pd.DataFrame(weather_res["hourly"])
     df_aqi = pd.DataFrame(aqi_res["hourly"])
 
