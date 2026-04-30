@@ -21,68 +21,56 @@ except Exception as e:
     model = None
     print(f"Error loading model: {e}")
 
+WEATHER_API_KEY = '6d808b6122f74abfae5140053263004'
+
 def get_lat_lon(city):
-    url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1&language=en&format=json"
+    # WeatherAPI can handle city names directly, but we'll use it to get resolved details
+    url = f"https://api.weatherapi.com/v1/search.json?key={WEATHER_API_KEY}&q={city}"
     res = requests.get(url).json()
-    if "results" in res and len(res["results"]) > 0:
-        data = res["results"][0]
-        return data["latitude"], data["longitude"], data["name"], data.get("country", "")
+    if isinstance(res, list) and len(res) > 0:
+        data = res[0]
+        return data["lat"], data["lon"], data["name"], data.get("country", "")
     return None, None, None, None
 
 def fetch_data_week(lat, lon):
-    weather_url = 'https://api.open-meteo.com/v1/forecast'
-    aqi_url = 'https://air-quality-api.open-meteo.com/v1/air-quality'
+    url = f"https://api.weatherapi.com/v1/forecast.json?key={WEATHER_API_KEY}&q={lat},{lon}&days=7&aqi=yes"
+    res = requests.get(url).json()
 
-    weather_params = {
-        'latitude': lat,
-        'longitude': lon,
-        'hourly': 'temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m',
-        'timezone': 'auto',
-        'forecast_days': 7
-    }
+    if "error" in res:
+        raise Exception(f"WeatherAPI Error: {res['error'].get('message', 'Unknown error')}")
 
-    aqi_params = {
-        'latitude': lat,
-        'longitude': lon,
-        'hourly': 'pm10,pm2_5,carbon_monoxide,nitrogen_dioxide',
-        'timezone': 'auto',
-        'forecast_days': 7
-    }
+    forecast_days = res.get("forecast", {}).get("forecastday", [])
+    all_hours = []
 
-    weather_res = requests.get(weather_url, params=weather_params).json()
-    aqi_res = requests.get(aqi_url, params=aqi_params).json()
+    for day in forecast_days:
+        for hour in day.get("hour", []):
+            aqi_data = hour.get("air_quality", {})
+            all_hours.append({
+                "time": hour["time"],
+                "PM2_5": aqi_data.get("pm2_5", 0),
+                "PM10": aqi_data.get("pm10", 0),
+                "CO": aqi_data.get("co", 0),
+                "NO2": aqi_data.get("no2", 0),
+                "temperature": hour["temp_c"],
+                "precipitation": hour["precip_mm"],
+                "relative_humidity": hour["humidity"],
+                "wind_speed_num": hour["wind_kph"]
+            })
 
-    if "hourly" not in weather_res:
-        error_msg = weather_res.get("reason", "Unknown weather API error")
-        raise Exception(f"Weather API Error: {error_msg}")
-    
-    if "hourly" not in aqi_res:
-        error_msg = aqi_res.get("reason", "Unknown AQI API error")
-        raise Exception(f"AQI API Error: {error_msg}")
-
-    df_weather = pd.DataFrame(weather_res["hourly"])
-    df_aqi = pd.DataFrame(aqi_res["hourly"])
-
-    df_weather['time'] = pd.to_datetime(df_weather['time'])
-    df_aqi['time'] = pd.to_datetime(df_aqi['time'])
-
-    df = pd.merge(df_aqi, df_weather, on='time')
-    df.rename(columns={
-        'pm2_5': 'PM2_5',
-        'pm10': 'PM10',
-        'carbon_monoxide': 'CO',
-        'nitrogen_dioxide': 'NO2',
-        'temperature_2m': 'temperature',
-        'relative_humidity_2m': 'relative_humidity',
-        'wind_speed_10m': 'wind_speed_num'
-    }, inplace=True)
+    df = pd.DataFrame(all_hours)
+    df['time'] = pd.to_datetime(df['time'])
 
     df['hours'] = df['time'].dt.hour
     df['month'] = df['time'].dt.month
     df['day_of_week'] = df['time'].dt.day_of_week
 
     current = datetime.now()
+    # Find the data closest to current hour
     df_now_hour = df[df['hours'] == current.hour].copy()
+    
+    # If we have multiple days, the first one is today
+    if not df_now_hour.empty:
+        df_now_hour = df_now_hour.head(7) # Get 7 days of that hour for "week" forecast
 
     feature_columns = [
         'PM2_5', 'PM10', 'CO', 'NO2', 
@@ -93,7 +81,11 @@ def fetch_data_week(lat, lon):
     x_test = df_now_hour[feature_columns]
 
     if model is not None:
-        predicted_aqi = model.predict(x_test)
+        try:
+            predicted_aqi = model.predict(x_test)
+        except Exception as e:
+            print(f"Prediction error: {e}")
+            predicted_aqi = (df_now_hour['PM2_5'] * 1.8 + df_now_hour['PM10'] * 0.8).values
     else:
         predicted_aqi = (df_now_hour['PM2_5'] * 1.8 + df_now_hour['PM10'] * 0.8).values
 
