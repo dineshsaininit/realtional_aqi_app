@@ -1,0 +1,143 @@
+/* ============================================================
+   MOBILE-ONLY REDESIGN (Applies strictly to max-width: 768px)
+   ============================================================ */
+@media (max-width: 768px) {
+
+    /* Core Layout & Spacing */
+    body {
+        padding: 0 !important;
+        margin: 0;
+        background: linear-gradient(to bottom, #0f172a, #1e293b) !important;
+        overflow-x: hidden;
+    }
+
+    .max-w-7xl {
+        padding: 10px;
+        gap: 12px !important;
+    }
+
+    /* Header Redesign */
+    h1 {
+        font-size: 1.8rem !important;
+        text-align: center;
+        margin-top: 10px;
+        letter-spacing: -0.5px;
+    }
+    
+    /* Make the dropdown container look like a mobile search bar */
+    #cityInput {
+        font-size: 1rem;
+        padding: 12px 16px 12px 40px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+
+    /* Floating Action Buttons for Predict/Hospital */
+    button[onclick="fetchData()"] {
+        border-radius: 20px;
+        padding: 12px;
+        font-size: 1.1rem;
+        width: 100%;
+        margin-top: 5px;
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+        box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    /* Glass Cards - Mobile App Look */
+    .glass-card {
+        background: rgba(30, 41, 59, 0.8) !important;
+        border-radius: 24px !important;
+        border: 1px solid rgba(255, 255, 255, 0.05) !important;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2) !important;
+        margin-bottom: 5px;
+    }
+
+    /* Chart Management */
+    /* Prevent charts from taking full screen by forcing fixed heights and overflow handling */
+    .glass-card:has(> #aqiChart),
+    .glass-card:has(> #relationChart),
+    .glass-card:has(> #histChart),
+    .glass-card:has(> #barChart) {
+        height: 320px !important;
+        padding: 8px !important;
+        overflow: hidden;
+    }
+
+    /* Adjust map height */
+    #map {
+        height: 250px !important;
+        border-radius: 16px !important;
+    }
+
+    /* Numerical Forecast (Slider approach for mobile) */
+    #numericalForecast {
+        display: flex;
+        overflow-x: auto;
+        gap: 10px;
+        padding-bottom: 10px;
+        scrollbar-width: none; /* Firefox */
+    }
+    
+    #numericalForecast::-webkit-scrollbar {
+        display: none; /* Chrome/Safari */
+    }
+
+    #numericalForecast > div {
+        flex: 0 0 140px; /* Force items to be horizontal cards */
+        flex-direction: column;
+        justify-content: center;
+        text-align: center;
+        background: rgba(255,255,255,0.03);
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,0.05);
+    }
+
+    /* Entrance Animations */
+    @keyframes slideUpFade {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .glass-card {
+        animation: slideUpFade 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    }
+
+    /* Pulse animation for today's AQI */
+    #todayAqi {
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(1); text-shadow: 0 0 0 rgba(52, 211, 153, 0); }
+        50% { transform: scale(1.05); text-shadow: 0 0 20px rgba(52, 211, 153, 0.5); }
+        100% { transform: scale(1); text-shadow: 0 0 0 rgba(52, 211, 153, 0); }
+    }
+
+    /* Team grid cleanup */
+    .grid-cols-1.sm\:grid-cols-2.lg\:grid-cols-4 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .group.relative.rounded-2xl {
+        padding: 1px !important;
+    }
+    
+    .w-20.h-20.rounded-full {
+        width: 50px !important;
+        height: 50px !important;
+        margin-bottom: 8px !important;
+    }
+    
+    .w-10.h-10 {
+        width: 24px !important;
+        height: 24px !important;
+    }
+
+    h3.text-xl {
+        font-size: 1.1rem !important;
+    }
+}

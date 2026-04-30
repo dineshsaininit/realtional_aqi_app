@@ -24,12 +24,26 @@ except Exception as e:
 WEATHER_API_KEY = '6d808b6122f74abfae5140053263004'
 
 def get_lat_lon(city):
-    # WeatherAPI can handle city names directly, but we'll use it to get resolved details
+    # Try WeatherAPI search first
     url = f"https://api.weatherapi.com/v1/search.json?key={WEATHER_API_KEY}&q={city}"
-    res = requests.get(url).json()
-    if isinstance(res, list) and len(res) > 0:
-        data = res[0]
-        return data["lat"], data["lon"], data["name"], data.get("country", "")
+    try:
+        res = requests.get(url).json()
+        if isinstance(res, list) and len(res) > 0:
+            data = res[0]
+            return data["lat"], data["lon"], data["name"], data.get("country", "")
+    except:
+        pass
+
+    # Fallback to Open-Meteo search if WeatherAPI fails (it's better for small towns)
+    try:
+        url_om = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1&language=en&format=json"
+        res_om = requests.get(url_om).json()
+        if "results" in res_om and len(res_om["results"]) > 0:
+            data = res_om["results"][0]
+            return data["latitude"], data["longitude"], data["name"], data.get("country", "")
+    except:
+        pass
+
     return None, None, None, None
 
 def fetch_data_week(lat, lon):
