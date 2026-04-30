@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relational AQI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+            border-radius: 1rem;
+            z-index: 10;
+        }
+
+        .loader {
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body class="min-h-screen p-4 md:p-8 font-sans">
+
+    <div class="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div>
+            <h1
+                class="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
+                AQI MONITORING SYSTEM | Relational AQI
+            </h1>
+            <p class="text-slate-400 mt-1">DBMS PROJECT | MONITOR BY :- PKK SIR</p>
+        </div>
+
+        <div class="flex w-full md:w-auto gap-2 glass-card p-2">
+            <div class="relative flex-grow md:w-64">
+                <i data-lucide="map-pin" class="absolute left-3 top-2.5 text-slate-400 w-5 h-5 z-10"></i>
+                <select id="cityInput" onchange="fetchData()"
+                    class="w-full bg-slate-800/50 text-white rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 border border-slate-700 appearance-none relative cursor-pointer">
+                </select>
+            </div>
+            <button onclick="fetchData()"
+                class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                <span>Predict</span>
+                <div id="loader" class="loader"></div>
+            </button>
+            <button onclick="findNearestHospital()"
+                class="bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2 shadow-lg shadow-rose-500/20">
+                <i data-lucide="hospital" class="w-5 h-5"></i>
+                <span class="hidden md:inline">Contact Hospital</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <div class="lg:col-span-1 flex flex-col gap-6">
+            <div class="glass-card p-6">
+                <h2 class="text-xl font-bold mb-1" id="locName">Select Location</h2>
+                <p class="text-slate-400 mb-4" id="locCountry">--</p>
+                <div class="h-48 rounded-xl overflow-hidden relative">
+                    <div id="map"></div>
+                </div>
+            </div>
+
+            <div class="glass-card p-6 grid grid-cols-2 gap-4 text-center">
+                <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                    <p class="text-slate-400 text-sm">Today's AQI Detail </p>
+                    <p class="text-3xl font-bold text-emerald-400 mt-1" id="todayAqi">--</p>
+                </div>
+                <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                    <p class="text-slate-400 text-sm">Temperature</p>
+                    <p class="text-3xl font-bold text-blue-400 mt-1" id="todayTemp">--°</p>
+                </div>
+            </div>
+
+            <div class="glass-card p-6">
+                <h3 class="text-lg font-bold mb-4 text-slate-200">Prediction Model Output</h3>
+                <div id="numericalForecast" class="space-y-3">
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <div class="glass-card p-4 md:col-span-2 h-80 relative">
+                <div id="aqiChart" class="w-full h-full"></div>
+            </div>
+
+            <div class="glass-card p-4 h-72 relative">
+                <div id="relationChart" class="w-full h-full"></div>
+            </div>
+
+            <div class="glass-card p-4 h-72 relative">
+                <div id="histChart" class="w-full h-full"></div>
+            </div>
+
+            <div class="glass-card p-4 md:col-span-2 h-80 relative">
+                <div id="barChart" class="w-full h-full"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ===== HEALTH IMPACT SECTION ===== -->
+    <div class="max-w-7xl mx-auto mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6" id="healthSection"
+        style="display:none!important">
+
+        <!-- AQI Health Impact Panel -->
+        <div class="glass-card p-6">
+            <div class="flex items-center gap-3 mb-5">
+                <div class="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                    <i data-lucide="stethoscope" class="w-6 h-6 text-blue-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-slate-100">AQI Health Impact</h2>
+                    <p class="text-slate-400 text-sm">Current conditions &amp; risks at this location</p>
+                </div>
+            </div>
+
+            <!-- AQI Category Banner -->
+            <div id="aqiBanner" class="rounded-xl px-5 py-4 mb-5 flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-widest opacity-80" id="bannerLabel">--</p>
+                    <p class="text-3xl font-extrabold mt-0.5" id="bannerAqi">--</p>
+                </div>
+                <span id="bannerEmoji" class="text-5xl">🌫</span>
+            </div>
+
+            <!-- Diseases list -->
+            <div class="mb-4">
+                <p class="text-sm font-semibold text-slate-300 mb-2 flex items-center gap-2">
+                    <i data-lucide="alert-triangle" class="w-4 h-4 text-yellow-400"></i> Associated Health Risks
+                </p>
+                <div id="diseaseList" class="flex flex-wrap gap-2"></div>
+            </div>
+
+            <!-- General preventions -->
+            <div>
+                <p class="text-sm font-semibold text-slate-300 mb-2 flex items-center gap-2">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i> General Preventive Measures
+                </p>
+                <ul id="preventionList" class="space-y-1.5"></ul>
+            </div>
+        </div>
+
+        <!-- Personalized Health Checker -->
+        <div class="glass-card p-6">
+            <div class="flex items-center gap-3 mb-5">
+                <div class="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                    <i data-lucide="heart-pulse" class="w-6 h-6 text-purple-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-slate-100">Personalized Health Advisory</h2>
+                    <p class="text-slate-400 text-sm">Select your condition for tailored guidance</p>
+                </div>
+            </div>
+
+            <!-- Condition pills -->
+            <div class="flex flex-wrap gap-2 mb-5" id="conditionPills">
+                <button onclick="toggleCondition('asthma'); fetchAIAdvice('Asthma')" data-cond="asthma"
+                    class="condition-pill px-4 py-2 rounded-full text-sm font-semibold border border-slate-600 text-slate-300 hover:border-blue-400 hover:text-blue-400 transition-all duration-200">
+                    🌬️ Asthma
+                </button>
+                <button onclick="toggleCondition('copd'); fetchAIAdvice('COPD')" data-cond="copd"
+                    class="condition-pill px-4 py-2 rounded-full text-sm font-semibold border border-slate-600 text-slate-300 hover:border-blue-400 hover:text-blue-400 transition-all duration-200">
+                    🫁 COPD
+                </button>
+                <button onclick="toggleCondition('heart'); fetchAIAdvice('Heart Disease')" data-cond="heart"
+                    class="condition-pill px-4 py-2 rounded-full text-sm font-semibold border border-slate-600 text-slate-300 hover:border-rose-400 hover:text-rose-400 transition-all duration-200">
+                    ❤️ Heart Disease
+                </button>
+                <button onclick="toggleCondition('diabetes'); fetchAIAdvice('Diabetes')" data-cond="diabetes"
+                    class="condition-pill px-4 py-2 rounded-full text-sm font-semibold border border-slate-600 text-slate-300 hover:border-amber-400 hover:text-amber-400 transition-all duration-200">
+                    🩸 Diabetes
+                </button>
+                <button onclick="toggleCondition('elderly'); fetchAIAdvice('Elderly (65+)')" data-cond="elderly"
+                    class="condition-pill px-4 py-2 rounded-full text-sm font-semibold border border-slate-600 text-slate-300 hover:border-cyan-400 hover:text-cyan-400 transition-all duration-200">
+                    👴 Elderly (65+)
+                </button>
+                <button onclick="toggleCondition('children'); fetchAIAdvice('Children (<12)')" data-cond="children"
+                    class="condition-pill px-4 py-2 rounded-full text-sm font-semibold border border-slate-600 text-slate-300 hover:border-pink-400 hover:text-pink-400 transition-all duration-200">
+                    🧒 Children (&lt;12)
+                </button>
+                <button onclick="toggleCondition('pregnant'); fetchAIAdvice('Pregnant')" data-cond="pregnant"
+                    class="condition-pill px-4 py-2 rounded-full text-sm font-semibold border border-slate-600 text-slate-300 hover:border-fuchsia-400 hover:text-fuchsia-400 transition-all duration-200">
+                    🤱 Pregnant
+                </button>
+            </div>
+
+            <!-- Advisory output -->
+            <div id="advisoryOutput">
+                <p class="text-slate-500 text-sm italic">Select a condition above to see your personalised advice.</p>
+            </div>
+        </div>
+    </div>
+    <!-- ===== END HEALTH IMPACT SECTION ===== -->
+
+    <div class="max-w-7xl mx-auto mt-6">
+        <div class="glass-card p-6">
+            <h2 class="text-xl font-bold mb-4 text-slate-200">AQI plotting on Map</h2>
+            <div id="historicalMap"
+                class="w-full h-[500px] rounded-xl overflow-hidden relative border border-slate-700/50 z-0"></div>
+        </div>
+    </div>
+
+
+    <div class="max-w-7xl mx-auto mt-16 mb-12">
+        <div class="text-center mb-10">
+            <h2
+                class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 inline-block">
+                Meet the Team</h2>
+            <p class="text-slate-400 mt-2">The core team member of team Relational AQI</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <!-- Team Member 1 (Blue Glow) -->
+            <div
+                class="group relative rounded-2xl p-[1px] bg-gradient-to-b from-slate-700 to-slate-800 hover:from-blue-500 hover:to-emerald-500 transition-all duration-500 hover:shadow-[0_0_30px_rgba(59,130,246,0.3)] hover:-translate-y-2 cursor-pointer">
+                <div
+                    class="absolute inset-0 bg-gradient-to-b from-blue-600/20 to-emerald-600/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                </div>
+                <div
+                    class="relative h-full bg-slate-900/90 backdrop-blur-xl rounded-2xl p-6 flex flex-col items-center justify-center text-center overflow-hidden">
+                    <div
+                        class="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center border-2 border-slate-600 group-hover:border-blue-400 group-hover:scale-110 transition-all duration-500 mb-4 z-10">
+                        <i data-lucide="user"
+                            class="w-10 h-10 text-slate-400 group-hover:text-blue-400 transition-colors duration-500"></i>
+                    </div>
+                    <h3
+                        class="text-xl font-bold text-slate-200 group-hover:text-white transition-colors duration-300 z-10">
+                        Dinesh Saini</h3>
+                    <p class="text-sm text-blue-400 mt-1 font-medium z-10">ROLL NO :- B240042CS</p>
+                </div>
+            </div>
+
+            <!-- Team Member 2 (Purple Glow) -->
+            <div
+                class="group relative rounded-2xl p-[1px] bg-gradient-to-b from-slate-700 to-slate-800 hover:from-purple-500 hover:to-pink-500 transition-all duration-500 hover:shadow-[0_0_30px_rgba(168,85,247,0.3)] hover:-translate-y-2 cursor-pointer">
+                <div
+                    class="absolute inset-0 bg-gradient-to-b from-purple-600/20 to-pink-600/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                </div>
+                <div
+                    class="relative h-full bg-slate-900/90 backdrop-blur-xl rounded-2xl p-6 flex flex-col items-center justify-center text-center overflow-hidden">
+                    <div
+                        class="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center border-2 border-slate-600 group-hover:border-purple-400 group-hover:scale-110 transition-all duration-500 mb-4 z-10">
+                        <i data-lucide="user"
+                            class="w-10 h-10 text-slate-400 group-hover:text-purple-400 transition-colors duration-500"></i>
+                    </div>
+                    <h3
+                        class="text-xl font-bold text-slate-200 group-hover:text-white transition-colors duration-300 z-10">
+                        Janhvhi Gupta</h3>
+                    <p class="text-sm text-purple-400 mt-1 font-medium z-10">ROLL NO :- B240009AI</p>
+                </div>
+            </div>
+
+
+            <div
+                class="group relative rounded-2xl p-[1px] bg-gradient-to-b from-slate-700 to-slate-800 hover:from-pink-500 hover:to-pink-500 transition-all duration-500 hover:shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:-translate-y-2 cursor-pointer">
+                <div
+                    class="absolute inset-0 bg-gradient-to-b from-pink-600/20 to-pink-600/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                </div>
+                <div
+                    class="relative h-full bg-slate-900/90 backdrop-blur-xl rounded-2xl p-6 flex flex-col items-center justify-center text-center overflow-hidden">
+                    <div
+                        class="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center border-2 border-slate-600 group-hover:border-emerald-400 group-hover:scale-110 transition-all duration-500 mb-4 z-10">
+                        <i data-lucide="user"
+                            class="w-10 h-10 text-slate-400 group-hover:text-emerald-400 transition-colors duration-500"></i>
+                    </div>
+                    <h3
+                        class="text-xl font-bold text-slate-200 group-hover:text-white transition-colors duration-300 z-10">
+                        Divyangna</h3>
+                    <p class="text-sm text-emerald-400 mt-1 font-medium z-10">ROLL NO :- B240008AI</p>
+                </div>
+            </div>
+
+
+            <div
+                class="group relative rounded-2xl p-[1px] bg-gradient-to-b from-slate-700 to-slate-800 hover:from-orange-500 hover:to-amber-500 transition-all duration-500 hover:shadow-[0_0_30px_rgba(245,158,11,0.3)] hover:-translate-y-2 cursor-pointer">
+                <div
+                    class="absolute inset-0 bg-gradient-to-b from-orange-600/20 to-amber-600/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                </div>
+                <div
+                    class="relative h-full bg-slate-900/90 backdrop-blur-xl rounded-2xl p-6 flex flex-col items-center justify-center text-center overflow-hidden">
+                    <div
+                        class="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center border-2 border-slate-600 group-hover:border-orange-400 group-hover:scale-110 transition-all duration-500 mb-4 z-10">
+                        <i data-lucide="user"
+                            class="w-10 h-10 text-slate-400 group-hover:text-orange-400 transition-colors duration-500"></i>
+                    </div>
+                    <h3
+                        class="text-xl font-bold text-slate-200 group-hover:text-white transition-colors duration-300 z-10">
+                        Bhavya</h3>
+                    <p class="text-sm text-orange-400 mt-1 font-medium z-10">ROLL NO :- B240005AI</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .condition-pill.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            color: #93c5fd;
+        }
+
+        .condition-pill.active[data-cond="heart"] {
+            background: rgba(239, 68, 68, .2);
+            border-color: #ef4444;
+            color: #fca5a5;
+        }
+
+        .condition-pill.active[data-cond="diabetes"] {
+            background: rgba(245, 158, 11, .2);
+            border-color: #f59e0b;
+            color: #fcd34d;
+        }
+
+        .condition-pill.active[data-cond="elderly"] {
+            background: rgba(6, 182, 212, .2);
+            border-color: #06b6d4;
+            color: #67e8f9;
+        }
+
+        .condition-pill.active[data-cond="children"] {
+            background: rgba(236, 72, 153, .2);
+            border-color: #ec4899;
+            color: #f9a8d4;
+        }
+
+        .condition-pill.active[data-cond="pregnant"] {
+            background: rgba(217, 70, 239, .2);
+            border-color: #d946ef;
+            color: #e879f9;
+        }
+
+        #aqiBanner {
+            transition: background 0.4s, color 0.4s;
+        }
+
+        .disease-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            border-radius: 9999px;
+            padding: 3px 12px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        .prevention-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.07);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 0.5rem;
+            padding: 8px 12px;
+            font-size: 0.82rem;
+            color: #a7f3d0;
+        }
+
+        .advisory-card {
+            border-radius: 0.75rem;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(30, 41, 59, 0.6);
+        }
+
+        .risk-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 14px;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            letter-spacing: 0.03em;
+        }
+    </style>
+    <script>
+        lucide.createIcons();
+
+        const NE_DISTRICTS = {
+            "Arunachal Pradesh": ["Anjaw", "Bichom", "Changlang", "Dibang Valley", "East Kameng", "East Siang", "Itanagar Capital Complex", "Kamle", "Keyi Panyor", "Kra Daadi", "Kurung Kumey", "Lepa Rada", "Lohit", "Longding", "Lower Dibang Valley", "Lower Siang", "Lower Subansiri", "Namsai", "Pakke-Kessang", "Papum Pare", "Shi Yomi", "Siang", "Tawang", "Tirap", "Upper Siang", "Upper Subansiri", "West Kameng", "West Siang"],
+            "Assam": ["Bajali", "Baksa", "Barpeta", "Biswanath", "Bongaigaon", "Cachar", "Charaideo", "Chirang", "Darrang", "Dhemaji", "Dhubri", "Dibrugarh", "Dima Hasao", "Goalpara", "Golaghat", "Hailakandi", "Hojai", "Jorhat", "Kamrup", "Kamrup Metropolitan", "Karbi Anglong", "Karimganj", "Kokrajhar", "Lakhimpur", "Majuli", "Morigaon", "Nagaon", "Nalbari", "Sivasagar", "Sonitpur", "South Salmara-Mankachar", "Tamulpur", "Tinsukia", "Udalguri", "West Karbi Anglong"],
+            "Manipur": ["Bishnupur", "Chandel", "Churachandpur", "Imphal East", "Imphal West", "Jiribam", "Kakching", "Kamjong", "Kangpokpi", "Noney", "Pherzawl", "Senapati", "Tamenglong", "Tengnoupal", "Thoubal", "Ukhrul"],
+            "Meghalaya": ["East Garo Hills", "East Jaintia Hills", "East Khasi Hills", "Eastern West Khasi Hills", "North Garo Hills", "Ri Bhoi", "South Garo Hills", "South West Garo Hills", "South West Khasi Hills", "West Garo Hills", "West Jaintia Hills", "West Khasi Hills"],
+            "Mizoram": ["Aizawl", "Champhai", "Hnahthial", "Khawzawl", "Kolasib", "Lawngtlai", "Lunglei", "Mamit", "Siaha", "Saitual", "Serchhip"],
+            "Nagaland": ["Chümoukedima", "Dimapur", "Kiphire", "Kohima", "Longleng", "Mokokchung", "Mon", "Niuland", "Noklak", "Peren", "Phek", "Shamator", "Tseminyü", "Tuensang", "Wokha", "Zünheboto"],
+            "Sikkim": ["Gangtok", "Gyalshing", "Mangan", "Namchi", "Pakyong", "Soreng"],
+            "Tripura": ["Dhalai", "Gomati", "Khowai", "North Tripura", "Sepahijala", "South Tripura", "Unakoti", "West Tripura"],
+            "Rajasthan": ["Churu", "Bharatpur"]
+        };
+
+        function populateDropdown() {
+            const select = document.getElementById('cityInput');
+            for (const [state, cities] of Object.entries(NE_DISTRICTS)) {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = state;
+                cities.forEach(city => {
+                    const option = document.createElement('option');
+                    option.value = city;
+                    option.textContent = city;
+                    optgroup.appendChild(option);
+                });
+                select.appendChild(optgroup);
+            }
+        }
+
+        let map = L.map('map').setView([26.2006, 92.9376], 5);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+        let marker;
+
+        const layoutConfig = {
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            font: { color: '#94a3b8' },
+            margin: { t: 40, b: 40, l: 40, r: 20 },
+            xaxis: { gridcolor: '#334155' },
+            yaxis: { gridcolor: '#334155' }
+        };
+
+        let histMap = L.map('historicalMap').setView([26.2006, 92.9376], 6);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(histMap);
+
+        const historicalData = [
+            [23.9153, 91.3879, 'West Tripura', 160, 'Moderate', 'orange'],
+            [26.2342, 94.7416, 'Tuensang', 155, 'Moderate', 'orange'],
+            [27.2289, 88.6471, 'Pakyong', 143, 'Moderate', 'orange'],
+            [25.8529, 92.5876, 'West Karbi Anglong', 170, 'Moderate', 'orange'],
+            [23.7564, 92.4515, 'Mamit', 120, 'Moderate', 'orange'],
+            [24.191, 92.046, 'Unakoti', 142, 'Moderate', 'orange'],
+            [28.1167, 96.8199, 'Anjaw', 77, 'Satisfactory', 'lightgreen'],
+            [26.1469, 91.2227, 'Kamrup', 158, 'Moderate', 'orange'],
+            [26.5108, 93.9744, 'Golaghat', 166, 'Moderate', 'orange'],
+            [26.8795, 95.3156, 'Longding', 153, 'Moderate', 'orange'],
+            [23.3053, 92.8455, 'Serchhip', 126, 'Moderate', 'orange'],
+            [28.2596, 94.0938, 'Upper Subansiri', 72, 'Satisfactory', 'lightgreen'],
+            [25.6185, 90.6342, 'East Garo Hills', 141, 'Moderate', 'orange'],
+            [25.3307, 91.3217, 'South West Khasi Hills', 152, 'Moderate', 'orange'],
+            [22.3913, 92.7397, 'Lawngtlai', 111, 'Moderate', 'orange'],
+            [25.6065, 90.2038, 'West Garo Hills', 131, 'Moderate', 'orange'],
+            [27.2699, 96.0602, 'Changlang', 120, 'Moderate', 'orange'],
+            [26.7578, 94.208, 'Jorhat', 168, 'Moderate', 'orange'],
+            [28.4775, 94.8166, 'Siang', 102, 'Moderate', 'orange'],
+            [25.6619, 94.1019, 'Kohima', 151, 'Moderate', 'orange'],
+            [27.9211, 94.7409, 'Lepa Rada', 116, 'Moderate', 'orange'],
+            [25.4004, 93.0752, 'Dima Hasao', 142, 'Moderate', 'orange'],
+            [27.7312, 94.0965, 'Kamle', 138, 'Moderate', 'orange'],
+            [25.2516, 92.4841, 'East Jaintia Hills', 150, 'Moderate', 'orange'],
+            [26.6464, 90.6242, 'Chirang', 159, 'Moderate', 'orange'],
+            [26.48, 90.558, 'Bongaigaon', 164, 'Moderate', 'orange'],
+            [25.652, 91.6232, 'Eastern West Khasi Hills', 152, 'Moderate', 'orange'],
+            [24.3626, 94.2595, 'Tengnoupal', 118, 'Moderate', 'orange'],
+            [28.6852, 94.2368, 'Shi Yomi', 60, 'Satisfactory', 'lightgreen'],
+            [26.1124, 95.0124, 'Noklak', 119, 'Moderate', 'orange'],
+            [27.0302, 95.4979, 'Tirap', 144, 'Moderate', 'orange'],
+            [25.941, 94.1685, 'Tseminyü', 156, 'Moderate', 'orange'],
+            [27.8007, 94.565, 'Lower Siang', 104, 'Moderate', 'orange'],
+            [28.1971, 94.4841, 'West Siang', 104, 'Moderate', 'orange'],
+            [27.5064, 93.7336, 'Keyi Panyor', 84, 'Satisfactory', 'lightgreen'],
+            [26.5407, 91.1687, 'Bajali', 172, 'Moderate', 'orange'],
+            [27.488, 95.3602, 'Tinsukia', 165, 'Moderate', 'orange'],
+            [25.862, 90.7018, 'North Garo Hills', 154, 'Moderate', 'orange'],
+            [26.0714, 94.8745, 'Shamator', 152, 'Moderate', 'orange'],
+            [27.9864, 93.1578, 'Kurung Kumey', 61, 'Satisfactory', 'lightgreen'],
+            [23.8129, 92.9728, 'Saitual', 135, 'Moderate', 'orange'],
+            [26.4912, 90.1215, 'Kokrajhar', 162, 'Moderate', 'orange'],
+            [28.8291, 95.9554, 'Dibang Valley', 75, 'Satisfactory', 'lightgreen'],
+            [25.1528, 93.9714, 'Kangpokpi', 135, 'Moderate', 'orange'],
+            [24.7586, 92.8817, 'Cachar', 157, 'Moderate', 'orange'],
+            [28.035, 96.1714, 'Lohit', 158, 'Moderate', 'orange'],
+            [26.2552, 92.3286, 'Morigaon', 174, 'Moderate', 'orange'],
+            [27.714, 96.016, 'Namsai', 170, 'Moderate', 'orange'],
+            [24.2596, 93.1906, 'Pherzawl', 146, 'Moderate', 'orange'],
+            [27.5879, 91.8637, 'Tawang', 97, 'Satisfactory', 'lightgreen'],
+            [24.6847, 92.5646, 'Hailakandi', 158, 'Moderate', 'orange'],
+            [26.3534, 91.3984, 'Nalbari', 172, 'Moderate', 'orange'],
+            [26.5839, 94.8045, 'Longleng', 155, 'Moderate', 'orange'],
+            [22.952, 92.6339, 'Lunglei', 121, 'Moderate', 'orange'],
+            [23.9564, 91.6421, 'Khowai', 153, 'Moderate', 'orange'],
+            [24.8024, 93.1165, 'Jiribam', 154, 'Moderate', 'orange'],
+            [28.0742, 95.4178, 'East Siang', 162, 'Moderate', 'orange'],
+            [27.0697, 95.0643, 'Charaideo', 162, 'Moderate', 'orange'],
+            [24.4975, 93.9836, 'Kakching', 129, 'Moderate', 'orange'],
+            [26.7939, 93.3592, 'Biswanath', 163, 'Moderate', 'orange'],
+            [27.329, 88.6123, 'Gangtok', 143, 'Moderate', 'orange'],
+            [24.6267, 93.76, 'Bishnupur', 153, 'Moderate', 'orange'],
+            [27.4845, 94.9019, 'Dibrugarh', 150, 'Moderate', 'orange'],
+            [26.1323, 90.125, 'Dhubri', 157, 'Moderate', 'orange'],
+            [24.0921, 92.2451, 'North Tripura', 144, 'Moderate', 'orange'],
+            [27.4185, 88.1808, 'Gyalshing', 99, 'Satisfactory', 'lightgreen'],
+            [26.7678, 92.7014, 'Sonitpur', 166, 'Moderate', 'orange'],
+            [27.1763, 94.1993, 'Lakhimpur', 152, 'Moderate', 'orange'],
+            [25.8505, 93.918, 'Niuland', 156, 'Moderate', 'orange'],
+            [27.9635, 93.7666, 'Kra Daadi', 89, 'Satisfactory', 'lightgreen'],
+            [24.6387, 93.9969, 'Thoubal', 151, 'Moderate', 'orange'],
+            [24.7591, 93.8617, 'Imphal West', 151, 'Moderate', 'orange'],
+            [26.6667, 95.0, 'Mon', 153, 'Moderate', 'orange'],
+            [25.8117, 94.8474, 'Kiphire', 152, 'Moderate', 'orange'],
+            [26.0713, 93.4553, 'Karbi Anglong', 155, 'Moderate', 'orange'],
+            [27.1583, 93.1562, 'Pakke-Kessang', 145, 'Moderate', 'orange'],
+            [25.9629, 92.9818, 'Hojai', 165, 'Moderate', 'orange'],
+            [25.45, 93.6002, 'Peren', 144, 'Moderate', 'orange'],
+            [24.3312, 94.0011, 'Chandel', 129, 'Moderate', 'orange'],
+            [25.0983, 94.3632, 'Ukhrul', 122, 'Moderate', 'orange'],
+            [27.1902, 88.2007, 'Soreng', 164, 'Moderate', 'orange'],
+            [25.7604, 89.8928, 'South Salmara-Mankachar', 149, 'Moderate', 'orange'],
+            [26.7047, 92.0422, 'Udalguri', 171, 'Moderate', 'orange'],
+            [25.3934, 94.1502, 'Senapati', 135, 'Moderate', 'orange'],
+            [24.5828, 92.3725, 'Karimganj', 155, 'Moderate', 'orange'],
+            [25.8087, 93.7149, 'Chümoukedima', 155, 'Moderate', 'orange'],
+            [24.9859, 93.504, 'Tamenglong', 153, 'Moderate', 'orange'],
+            [25.8764, 91.8568, 'Ri Bhoi', 166, 'Moderate', 'orange'],
+            [25.6701, 94.3844, 'Phek', 148, 'Moderate', 'orange'],
+            [27.5945, 94.7192, 'Dhemaji', 150, 'Moderate', 'orange'],
+            [23.8253, 91.9732, 'Dhalai', 142, 'Moderate', 'orange'],
+            [28.7312, 95.0377, 'Upper Siang', 58, 'Satisfactory', 'lightgreen'],
+            [26.1353, 91.8617, 'Kamrup Metropolitan', 166, 'Moderate', 'orange'],
+            [27.7497, 88.5212, 'Mangan', 102, 'Moderate', 'orange'],
+            [27.3049, 92.6123, 'Bichom', 158, 'Moderate', 'orange'],
+            [25.348, 90.5658, 'South Garo Hills', 153, 'Moderate', 'orange'],
+            [23.6317, 93.3493, 'Champhai', 119, 'Moderate', 'orange'],
+            [27.2916, 92.4619, 'West Kameng', 139, 'Moderate', 'orange'],
+            [28.215, 95.8788, 'Lower Dibang Valley', 117, 'Moderate', 'orange'],
+            [27.2864, 93.6188, 'Papum Pare', 117, 'Moderate', 'orange'],
+            [24.8591, 93.6327, 'Noney', 153, 'Moderate', 'orange'],
+            [26.0492, 90.6002, 'Goalpara', 154, 'Moderate', 'orange'],
+            [26.6421, 91.6234, 'Tamulpur', 168, 'Moderate', 'orange'],
+            [22.4883, 92.9822, 'Siaha', 111, 'Moderate', 'orange'],
+            [23.7278, 92.718, 'Aizawl', 132, 'Moderate', 'orange'],
+            [27.5578, 93.0753, 'East Kameng', 97, 'Satisfactory', 'lightgreen'],
+            [23.1708, 91.6388, 'South Tripura', 144, 'Moderate', 'orange'],
+            [26.0124, 94.5124, 'Zünheboto', 155, 'Moderate', 'orange'],
+            [26.6276, 91.3389, 'Baksa', 163, 'Moderate', 'orange'],
+            [24.1905, 92.7137, 'Kolasib', 135, 'Moderate', 'orange'],
+            [24.8328, 94.0167, 'Imphal East', 151, 'Moderate', 'orange'],
+            [27.5326, 93.7823, 'Lower Subansiri', 84, 'Satisfactory', 'lightgreen'],
+            [26.3459, 91.0397, 'Barpeta', 172, 'Moderate', 'orange'],
+            [24.3469, 93.6994, 'Churachandpur', 143, 'Moderate', 'orange'],
+            [26.4796, 94.5105, 'Mokokchung', 162, 'Moderate', 'orange'],
+            [23.6658, 91.32, 'Sepahijala', 155, 'Moderate', 'orange'],
+            [23.4987, 91.2999, 'Gomati', 155, 'Moderate', 'orange'],
+            [25.4426, 92.2988, 'West Jaintia Hills', 159, 'Moderate', 'orange'],
+            [24.8578, 94.5108, 'Kamjong', 122, 'Moderate', 'orange'],
+            [25.9041, 93.7178, 'Dimapur', 155, 'Moderate', 'orange'],
+            [27.022, 94.3274, 'Majuli', 155, 'Moderate', 'orange'],
+            [25.5814, 91.0851, 'West Khasi Hills', 137, 'Moderate', 'orange'],
+            [26.4373, 92.0047, 'Darrang', 178, 'Moderate', 'orange'],
+            [26.9835, 94.6394, 'Sivasagar', 162, 'Moderate', 'orange'],
+            [26.2423, 94.1921, 'Wokha', 166, 'Moderate', 'orange'],
+            [27.3031, 88.3786, 'Namchi', 164, 'Moderate', 'orange'],
+            [26.3314, 92.7525, 'Nagaon', 169, 'Moderate', 'orange'],
+            [23.4878, 93.1403, 'Khawzawl', 119, 'Moderate', 'orange'],
+            [25.4024, 91.8317, 'East Khasi Hills', 156, 'Moderate', 'orange'],
+            [25.4446, 89.997, 'South West Garo Hills', 149, 'Moderate', 'orange'],
+            [22.9664, 93.0103, 'Hnahthial', 106, 'Moderate', 'orange']
+        ];
+
+        historicalData.forEach(p => {
+            L.circleMarker([p[0], p[1]], {
+                color: p[5], fillColor: p[5], fillOpacity: 0.8, radius: 8, weight: 3
+            }).bindPopup(`City: ${p[2]}<br>AQI: ${p[3]}<br>Category: ${p[4]}`)
+                .bindTooltip(`${p[2]} - AQI: ${p[3]}`, { sticky: true })
+                .addTo(histMap);
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            populateDropdown();
+            fetchData();
+        });
+
+        async function fetchData() {
+            const city = document.getElementById('cityInput').value.trim();
+            if (!city) return;
+
+            document.getElementById('loader').style.display = 'block';
+
+            try {
+                const response = await fetch(`/api/predict?city=${encodeURIComponent(city)}`);
+                const result = await response.json();
+
+                if (result.error) {
+                    alert(result.error);
+                    return;
+                }
+
+                updateDashboard(result);
+            } catch (error) {
+                alert("Failed to fetch data.");
+                console.error(error);
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+
+        function updateDashboard(res) {
+            document.getElementById('locName').innerText = res.city;
+            document.getElementById('locCountry').innerText = res.country;
+
+            map.setView([res.lat, res.lon], 10);
+            if (marker) map.removeLayer(marker);
+            marker = L.marker([res.lat, res.lon]).addTo(map);
+
+            const predictions = res.data.predictions;
+            const raw = res.data.raw_data;
+
+            const todayAqiVal = Math.round(predictions[0].aqi);
+            document.getElementById('todayAqi').innerText = todayAqiVal;
+            updateHealthPanel(todayAqiVal);
+            document.getElementById('todayTemp').innerText = raw[0].temperature;
+
+            const numericalContainer = document.getElementById('numericalForecast');
+            numericalContainer.innerHTML = '';
+            predictions.forEach(p => {
+                let colorClass = 'text-emerald-400';
+                if (p.aqi > 50) colorClass = 'text-yellow-400';
+                if (p.aqi > 100) colorClass = 'text-orange-400';
+                if (p.aqi > 150) colorClass = 'text-red-400';
+                if (p.aqi > 200) colorClass = 'text-purple-400';
+
+                numericalContainer.innerHTML += `
+                    <div class="flex justify-between items-center bg-slate-800/80 p-3 rounded-lg border border-slate-700">
+                        <span class="text-slate-300 font-medium">${p.date}</span>
+                        <span class="${colorClass} font-bold text-lg">AQI: ${Math.round(p.aqi)}</span>
+                    </div>
+                `;
+            });
+
+            const dates = predictions.map(p => p.date);
+            const aqis = predictions.map(p => p.aqi);
+
+            const temps = raw.map(r => r.temperature);
+            const pm25 = raw.map(r => r.PM2_5);
+            const pm10 = raw.map(r => r.PM10);
+            const no2 = raw.map(r => r.NO2);
+            const wind = raw.map(r => r.wind_speed_num);
+
+            Plotly.newPlot('aqiChart', [{
+                x: dates, y: aqis,
+                type: 'scatter', mode: 'lines+markers',
+                line: { shape: 'spline', color: '#3b82f6', width: 3 },
+                marker: { size: 8, color: '#60a5fa' },
+                fill: 'tozeroy', fillcolor: 'rgba(59, 130, 246, 0.2)'
+            }], {
+                ...layoutConfig, title: { text: '7-Day Predicted AQI Trend', font: { color: '#f8fafc' } }
+            }, { responsive: true });
+
+            Plotly.newPlot('relationChart', [{
+                x: temps, y: pm25,
+                mode: 'markers', type: 'scatter',
+                marker: {
+                    size: 12, color: aqis, colorscale: 'Viridis',
+                    showscale: true, colorbar: { title: 'AQI', thickness: 15 }
+                }
+            }], {
+                ...layoutConfig,
+                title: { text: 'Temperature vs PM2.5 Relation', font: { color: '#f8fafc' } },
+                xaxis: { title: 'Temperature (°C)', gridcolor: '#334155' },
+                yaxis: { title: 'PM2.5 (μg/m³)', gridcolor: '#334155' }
+            }, { responsive: true });
+
+            Plotly.newPlot('histChart', [{
+                x: wind,
+                type: 'histogram',
+                marker: { color: '#10b981', line: { color: '#047857', width: 1 } },
+                opacity: 0.7
+            }], {
+                ...layoutConfig,
+                title: { text: 'Wind Speed Dist. (Hist)', font: { color: '#f8fafc' } },
+                xaxis: { title: 'Wind Speed (km/h)' },
+                yaxis: { title: 'Frequency' }
+            }, { responsive: true });
+
+            Plotly.newPlot('barChart', [
+                { x: dates, y: pm25, name: 'PM2.5', type: 'bar', marker: { color: '#f59e0b' } },
+                { x: dates, y: pm10, name: 'PM10', type: 'bar', marker: { color: '#ef4444' } },
+                { x: dates, y: no2, name: 'NO2', type: 'bar', marker: { color: '#8b5cf6' } }
+            ], {
+                ...layoutConfig,
+                barmode: 'group',
+                title: { text: 'Major Pollutants Comparison (Bar)', font: { color: '#f8fafc' } },
+                legend: { orientation: "h", y: -0.2 }
+            }, { responsive: true });
+        }
+
+        /* ============================================================
+           HEALTH DATA CONSTANTS
+        ============================================================ */
+        const AQI_HEALTH_DATA = [
+            {
+                min: 0, max: 50,
+                category: 'Good', emoji: '😊',
+                bg: 'linear-gradient(135deg,#064e3b,#065f46)',
+                textColor: '#6ee7b7',
+                diseases: ['Minimal risk for all', 'No significant impact'],
+                preventions: [
+                    'Enjoy outdoor activities freely.',
+                    'Keep windows open for fresh air circulation.',
+                    'Ideal time for outdoor exercise and sports.',
+                    'Stay hydrated to maintain lung health.'
+                ]
+            },
+            {
+                min: 51, max: 100,
+                category: 'Satisfactory', emoji: '🙂',
+                bg: 'linear-gradient(135deg,#14532d,#166534)',
+                textColor: '#86efac',
+                diseases: ['Minor breathing issues for sensitive individuals', 'Mild eye irritation'],
+                preventions: [
+                    'Sensitive individuals (children, elderly) may limit prolonged outdoor activity.',
+                    'Wear a basic cloth mask if you feel discomfort.',
+                    'Rinse eyes if they feel irritated.',
+                    'Monitor symptoms if you have pre-existing conditions.'
+                ]
+            },
+            {
+                min: 101, max: 200,
+                category: 'Moderate', emoji: '😐',
+                bg: 'linear-gradient(135deg,#78350f,#92400e)',
+                textColor: '#fcd34d',
+                diseases: [
+                    'Asthma & Bronchitis flare-ups',
+                    'Cardiovascular strain',
+                    'Eye irritation & redness',
+                    'Headaches & dizziness',
+                    'Respiratory tract irritation'
+                ],
+                preventions: [
+                    'Wear an N95/KN95 mask outdoors.',
+                    'Limit strenuous outdoor exercise.',
+                    'Keep inhalers/medication accessible.',
+                    'Use air purifiers indoors.',
+                    'Stay hydrated and avoid dusty areas.',
+                    'Monitor AQI regularly before going out.'
+                ]
+            },
+            {
+                min: 201, max: 300,
+                category: 'Poor', emoji: '😷',
+                bg: 'linear-gradient(135deg,#7f1d1d,#991b1b)',
+                textColor: '#fca5a5',
+                diseases: [
+                    'Severe Asthma & COPD exacerbations',
+                    'Increased risk of heart attacks',
+                    'Lung infections (pneumonia risk)',
+                    'Aggravated allergies & sinusitis',
+                    'Reduced lung function in children',
+                    'Skin & eye inflammation'
+                ],
+                preventions: [
+                    'Avoid all outdoor activities — stay indoors.',
+                    'Always wear N95 mask if going outside.',
+                    'Seal windows/doors; use air purifiers with HEPA filters.',
+                    'Keep emergency medication ready.',
+                    'Consult a doctor if you experience breathing difficulty.',
+                    'Avoid cooking with open flames indoors.',
+                    'Children and elderly must not go outside.'
+                ]
+            },
+            {
+                min: 301, max: 400,
+                category: 'Very Poor', emoji: '🤢',
+                bg: 'linear-gradient(135deg,#581c87,#6b21a8)',
+                textColor: '#d8b4fe',
+                diseases: [
+                    'Life-threatening respiratory distress',
+                    'High risk of stroke and heart failure',
+                    'Permanent lung damage with prolonged exposure',
+                    'Severe neurological effects',
+                    'Worsened diabetes complications',
+                    'High miscarriage/premature birth risk (pregnant)'
+                ],
+                preventions: [
+                    'DO NOT go outside under any circumstances.',
+                    'Seal all gaps in doors and windows with wet towels.',
+                    'Run air purifiers continuously.',
+                    'Seek hospitalisation if breathing worsens.',
+                    'Avoid any physical exertion even indoors.',
+                    'Call emergency services if symptoms are severe.'
+                ]
+            },
+            {
+                min: 401, max: 9999,
+                category: 'Severe / Hazardous', emoji: '☠️',
+                bg: 'linear-gradient(135deg,#1c0a00,#450a0a)',
+                textColor: '#fecaca',
+                diseases: [
+                    'Immediate respiratory failure risk',
+                    'Acute heart failure',
+                    'Severe CNS damage',
+                    'Cancer risk with chronic exposure',
+                    'Organ failure in vulnerable groups'
+                ],
+                preventions: [
+                    '🚨 HEALTH EMERGENCY — Evacuate the area if possible.',
+                    'Anyone outdoors is at immediate health risk.',
+                    'Hospitals should be on emergency alert.',
+                    'Pregnant women, children, elderly must be evacuated immediately.',
+                    'Use full respiratory protective equipment if you must go outside.',
+                    'Contact local authorities for emergency advisories.'
+                ]
+            }
+        ];
+
+        const CONDITION_TIPS = {
+            asthma: [
+                { maxAqi: 50, risk: 'low', badge: '✅ Safe', color: '#10b981', bg: 'rgba(16,185,129,.15)', tips: ['Air quality is great. You can go out freely.', 'Carry your reliever inhaler just in case.'] },
+                { maxAqi: 100, risk: 'low', badge: '✅ Low Risk', color: '#84cc16', bg: 'rgba(132,204,22,.12)', tips: ['Generally safe. Limit prolonged outdoor exertion.', 'Keep your inhaler accessible.'] },
+                { maxAqi: 200, risk: 'medium', badge: '⚠️ Moderate Risk', color: '#f59e0b', bg: 'rgba(245,158,11,.15)', tips: ['Use your preventer inhaler as prescribed.', 'Wear an N95 mask outdoors; avoid triggers like dust & smoke.', 'Keep rescue inhaler within reach at all times.', 'Avoid outdoor exercise during peak traffic hours.'] },
+                { maxAqi: 300, risk: 'high', badge: '🔴 High Risk', color: '#ef4444', bg: 'rgba(239,68,68,.15)', tips: ['Stay indoors with windows closed.', 'Run an air purifier in your room.', 'Take your preventer inhaler twice a day as prescribed.', 'Have an asthma action plan ready and share it with someone near you.', 'Seek medical help if you experience chest tightness or wheeze.'] },
+                { maxAqi: 9999, risk: 'critical', badge: '🚨 Critical — Danger', color: '#dc2626', bg: 'rgba(220,38,38,.2)', tips: ['DO NOT go outside — risk of severe asthma attack.', 'Call your doctor or emergency services immediately if airways feel tight.', 'Use nebuliser if prescribed.', 'Keep oral steroids ready as advised by your doctor.'] }
+            ],
+            copd: [
+                { maxAqi: 50, risk: 'low', badge: '✅ Safe', color: '#10b981', bg: 'rgba(16,185,129,.15)', tips: ['Good day for a gentle walk.', 'Practice breathing exercises.'] },
+                { maxAqi: 100, risk: 'low', badge: '✅ Low Risk', color: '#84cc16', bg: 'rgba(132,204,22,.12)', tips: ['Avoid prolonged outdoor exposure.', 'Use supplemental oxygen if prescribed.'] },
+                { maxAqi: 200, risk: 'medium', badge: '⚠️ Moderate Risk', color: '#f59e0b', bg: 'rgba(245,158,11,.15)', tips: ['Reduce outdoor time significantly.', 'Use bronchodilators as prescribed.', 'Avoid smoke, dust, and strong chemical odours.'] },
+                { maxAqi: 300, risk: 'high', badge: '🔴 High Risk', color: '#ef4444', bg: 'rgba(239,68,68,.15)', tips: ['Stay strictly indoors.', 'Use your COPD medication and oxygen therapy as prescribed.', 'Monitor blood oxygen saturation (SpO2).', 'Seek emergency help if SpO2 drops below 90%.'] },
+                { maxAqi: 9999, risk: 'critical', badge: '🚨 Critical — Danger', color: '#dc2626', bg: 'rgba(220,38,38,.2)', tips: ['Medical emergency risk.', 'Call emergency services immediately.', 'Do not exert yourself at all.'] }
+            ],
+            heart: [
+                { maxAqi: 50, risk: 'low', badge: '✅ Safe', color: '#10b981', bg: 'rgba(16,185,129,.15)', tips: ['Normal activities are fine.', 'Regular light exercise is beneficial.'] },
+                { maxAqi: 100, risk: 'low', badge: '✅ Low Risk', color: '#84cc16', bg: 'rgba(132,204,22,.12)', tips: ['Monitor your heart rate during outdoor activities.', 'Avoid strenuous exercise.'] },
+                { maxAqi: 200, risk: 'medium', badge: '⚠️ Moderate Risk', color: '#f59e0b', bg: 'rgba(245,158,11,.15)', tips: ['Air pollution can increase blood pressure and clotting risk.', 'Avoid peak traffic areas.', 'Take cardiac medications as scheduled.', 'Watch for chest pain, shortness of breath.'] },
+                { maxAqi: 300, risk: 'high', badge: '🔴 High Risk', color: '#ef4444', bg: 'rgba(239,68,68,.15)', tips: ['Risk of heart attack significantly elevated.', 'Stay indoors, rest, and avoid any physical stress.', 'Keep nitroglycerin or emergency medication ready.', 'Call emergency services if chest pain occurs.'] },
+                { maxAqi: 9999, risk: 'critical', badge: '🚨 Critical — Danger', color: '#dc2626', bg: 'rgba(220,38,38,.2)', tips: ['Immediate danger of cardiac event.', 'Stay completely at rest indoors.', 'Emergency services should be on standby.'] }
+            ],
+            diabetes: [
+                { maxAqi: 50, risk: 'low', badge: '✅ Safe', color: '#10b981', bg: 'rgba(16,185,129,.15)', tips: ['Normal routine.', 'Outdoor walks are encouraged.'] },
+                { maxAqi: 100, risk: 'low', badge: '✅ Low Risk', color: '#84cc16', bg: 'rgba(132,204,22,.12)', tips: ['Monitor blood glucose regularly.', 'Stay hydrated.'] },
+                { maxAqi: 200, risk: 'medium', badge: '⚠️ Moderate Risk', color: '#f59e0b', bg: 'rgba(245,158,11,.15)', tips: ['Air pollution can worsen insulin resistance.', 'Increase frequency of blood sugar checks.', 'Avoid stress and get adequate sleep.'] },
+                { maxAqi: 300, risk: 'high', badge: '🔴 High Risk', color: '#ef4444', bg: 'rgba(239,68,68,.15)', tips: ['Stay indoors.', 'High AQI can cause oxidative stress worsening glucose control.', 'Consult your endocrinologist if readings are erratic.'] },
+                { maxAqi: 9999, risk: 'critical', badge: '🚨 Critical — Danger', color: '#dc2626', bg: 'rgba(220,38,38,.2)', tips: ['Severe health risk. Remain indoors.', 'Monitor glucose closely and contact your doctor.'] }
+            ],
+            elderly: [
+                { maxAqi: 50, risk: 'low', badge: '✅ Safe', color: '#10b981', bg: 'rgba(16,185,129,.15)', tips: ['Enjoy gentle outdoor walks.', 'Stay socially active.'] },
+                { maxAqi: 100, risk: 'low', badge: '✅ Low Risk', color: '#84cc16', bg: 'rgba(132,204,22,.12)', tips: ['Short gentle walks are fine.', 'Avoid peak hours outdoors.'] },
+                { maxAqi: 200, risk: 'medium', badge: '⚠️ Moderate Risk', color: '#f59e0b', bg: 'rgba(245,158,11,.15)', tips: ['Limit outdoor exposure to under 30 minutes.', 'Wear a mask when outdoors.', 'Stay well hydrated.'] },
+                { maxAqi: 300, risk: 'high', badge: '🔴 High Risk', color: '#ef4444', bg: 'rgba(239,68,68,.15)', tips: ['Elderly must stay indoors.', 'Use air purifiers.', 'Have medicines and emergency contacts ready.'] },
+                { maxAqi: 9999, risk: 'critical', badge: '🚨 Critical — Danger', color: '#dc2626', bg: 'rgba(220,38,38,.2)', tips: ['Extreme danger. Do not step outside.', 'Require immediate care and monitoring.'] }
+            ],
+            children: [
+                { maxAqi: 50, risk: 'low', badge: '✅ Safe', color: '#10b981', bg: 'rgba(16,185,129,.15)', tips: ['Outdoor play is perfectly fine.', 'Enjoy parks and sports.'] },
+                { maxAqi: 100, risk: 'low', badge: '✅ Low Risk', color: '#84cc16', bg: 'rgba(132,204,22,.12)', tips: ['Short outdoor play is fine.', 'Avoid heavy exercise.'] },
+                { maxAqi: 200, risk: 'medium', badge: '⚠️ Moderate Risk', color: '#f59e0b', bg: 'rgba(245,158,11,.15)', tips: ['Limit outdoor play to under 20 minutes.', 'Children are more vulnerable — watch for coughing or eye irritation.', 'Wear child-sized masks outdoors.'] },
+                { maxAqi: 300, risk: 'high', badge: '🔴 High Risk', color: '#ef4444', bg: 'rgba(239,68,68,.15)', tips: ['Keep children strictly indoors.', 'No outdoor activity at school or home.', 'Monitor for breathing difficulty.'] },
+                { maxAqi: 9999, risk: 'critical', badge: '🚨 Critical — Danger', color: '#dc2626', bg: 'rgba(220,38,38,.2)', tips: ['Children must not go outside.', 'Seek paediatric medical help if symptoms arise.'] }
+            ],
+            pregnant: [
+                { maxAqi: 50, risk: 'low', badge: '✅ Safe', color: '#10b981', bg: 'rgba(16,185,129,.15)', tips: ['Safe to go outdoors for light walks.', 'Breathing fresh air is good for you and the baby.'] },
+                { maxAqi: 100, risk: 'low', badge: '✅ Low Risk', color: '#84cc16', bg: 'rgba(132,204,22,.12)', tips: ['Limit outdoor time.', 'Stay away from congested traffic areas.'] },
+                { maxAqi: 200, risk: 'medium', badge: '⚠️ Moderate Risk', color: '#f59e0b', bg: 'rgba(245,158,11,.15)', tips: ['Air pollution can affect foetal development.', 'Wear a well-fitted N95 mask if going out.', 'Avoid cooking over open flames for extended periods.'] },
+                { maxAqi: 300, risk: 'high', badge: '🔴 High Risk', color: '#ef4444', bg: 'rgba(239,68,68,.15)', tips: ['Do NOT go outside.', 'Pollution at this level is linked to premature birth and low birth weight.', 'Consult your OB-GYN if you experience dizziness or breathing issues.'] },
+                { maxAqi: 9999, risk: 'critical', badge: '🚨 Critical — Danger', color: '#dc2626', bg: 'rgba(220,38,38,.2)', tips: ['Severe health emergency risk to mother and baby.', 'Stay indoors and call your doctor immediately.'] }
+            ]
+        };
+
+        let selectedConditions = new Set();
+        let currentAqi = null;
+
+        function getAqiBucket(aqi) {
+            return AQI_HEALTH_DATA.find(b => aqi >= b.min && aqi <= b.max) || AQI_HEALTH_DATA[0];
+        }
+
+        function getConditionAqiEntry(condKey, aqi) {
+            return CONDITION_TIPS[condKey].find(e => aqi <= e.maxAqi) || CONDITION_TIPS[condKey][CONDITION_TIPS[condKey].length - 1];
+        }
+
+        function updateHealthPanel(aqi) {
+            currentAqi = aqi;
+            const bucket = getAqiBucket(aqi);
+
+            // Show section
+            const section = document.getElementById('healthSection');
+            section.style.removeProperty('display');
+            section.style.display = 'grid';
+
+            // Banner
+            const banner = document.getElementById('aqiBanner');
+            banner.style.background = bucket.bg;
+            banner.style.color = bucket.textColor;
+            document.getElementById('bannerLabel').textContent = `AQI ${aqi} — ${bucket.category}`;
+            document.getElementById('bannerAqi').textContent = bucket.category;
+            document.getElementById('bannerEmoji').textContent = bucket.emoji;
+
+            // Diseases
+            const dl = document.getElementById('diseaseList');
+            dl.innerHTML = bucket.diseases.map(d => `<span class="disease-tag">🦠 ${d}</span>`).join('');
+
+            // Preventions
+            const pl = document.getElementById('preventionList');
+            pl.innerHTML = bucket.preventions.map(p => `<li class="prevention-item"><span class="text-emerald-400">✔</span><span>${p}</span></li>`).join('');
+
+            // Re-render personalized panel
+            renderPersonalizedAdvisory();
+
+            // Refresh icons
+            lucide.createIcons();
+        }
+
+        function toggleCondition(cond) {
+            const btn = document.querySelector(`[data-cond="${cond}"]`);
+            if (selectedConditions.has(cond)) {
+                selectedConditions.delete(cond);
+                btn.classList.remove('active');
+            } else {
+                selectedConditions.add(cond);
+                btn.classList.add('active');
+            }
+            renderPersonalizedAdvisory();
+        }
+
+        function renderPersonalizedAdvisory() {
+            const out = document.getElementById('advisoryOutput');
+            if (selectedConditions.size === 0 || currentAqi === null) {
+                out.innerHTML = '<p class="text-slate-500 text-sm italic">Select a condition above to see your personalised advice.</p>';
+                return;
+            }
+
+            const condNames = { asthma: 'Asthma', copd: 'COPD', heart: 'Heart Disease', diabetes: 'Diabetes', elderly: 'Elderly (65+)', children: 'Children (<12)', pregnant: 'Pregnant' };
+            let html = '';
+
+            selectedConditions.forEach(cond => {
+                const entry = getConditionAqiEntry(cond, currentAqi);
+                html += `
+                    <div class="advisory-card" style="border-color: ${entry.color}33; background: ${entry.bg};">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="font-bold text-slate-100 text-sm">${condNames[cond]}</span>
+                            <span class="risk-badge" style="background:${entry.color}22; color:${entry.color}; border:1px solid ${entry.color}55;">${entry.badge}</span>
+                        </div>
+                        <ul class="space-y-1.5">
+                            ${entry.tips.map(t => `<li class="text-xs text-slate-300 flex gap-2"><span style="color:${entry.color}">•</span><span>${t}</span></li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            });
+
+            out.innerHTML = html;
+        }
+
+        async function fetchAIAdvice(disease) {
+            if (!currentAqi) return;
+
+            // Show modal
+            const modal = document.getElementById('aiModal');
+            const modalContent = document.getElementById('aiModalContent');
+            const aiLoading = document.getElementById('aiLoading');
+            const aiResponseContainer = document.getElementById('aiResponse');
+
+            modal.classList.remove('hidden');
+            // Trigger reflow
+            void modal.offsetWidth;
+            modal.classList.replace('opacity-0', 'opacity-100');
+            modalContent.classList.replace('scale-95', 'scale-100');
+
+            aiLoading.classList.remove('hidden');
+            aiLoading.classList.add('flex');
+            aiResponseContainer.classList.add('hidden');
+            aiResponseContainer.innerHTML = '';
+
+            try {
+                const response = await fetch('/api/ai_advice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ disease: disease, aqi: currentAqi })
+                });
+
+                const result = await response.json();
+
+                aiLoading.classList.add('hidden');
+                aiLoading.classList.remove('flex');
+                aiResponseContainer.classList.remove('hidden');
+
+                if (result.error) {
+                    aiResponseContainer.innerHTML = `<div class="bg-red-500/20 text-red-400 p-4 rounded-xl border border-red-500/30 font-medium whitespace-pre-wrap">${result.error}</div>`;
+                } else {
+                    // Basic markdown parsing for boldness and new lines
+                    const formattedText = result.advice
+                        .replace(/\*\*(.*?)\*\*/g, '<span class="text-white font-bold">$1</span>')
+                        .replace(/\*(.*?)\*/g, '<span class="text-white italic">$1</span>')
+                        .replace(/\n\n/g, '</p><p class="mt-2">')
+                        .replace(/\n/g, '<br/>')
+                        .replace(/•/g, '<span class="text-blue-400 mr-2">•</span>');
+
+                    aiResponseContainer.innerHTML = `<p>${formattedText}</p>`;
+                }
+            } catch (error) {
+                console.error(error);
+                aiLoading.classList.add('hidden');
+                aiLoading.classList.remove('flex');
+                aiResponseContainer.classList.remove('hidden');
+                aiResponseContainer.innerHTML = `<div class="bg-red-500/20 text-red-400 p-4 rounded-xl border border-red-500/30 flex items-center justify-center font-medium">Failed to connect to the AI Assistant.</div>`;
+            }
+        }
+
+        function closeAIModal() {
+            const modal = document.getElementById('aiModal');
+            const modalContent = document.getElementById('aiModalContent');
+
+            modal.classList.replace('opacity-100', 'opacity-0');
+            modalContent.classList.replace('scale-100', 'scale-95');
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        async function findNearestHospital() {
+            if (!navigator.geolocation) {
+                alert("Geolocation is not supported by your browser");
+                return;
+            }
+
+            const modal = document.getElementById('hospitalModal');
+            const modalContent = document.getElementById('hospitalModalContent');
+            const loading = document.getElementById('hospitalLoading');
+            const resultDiv = document.getElementById('hospitalResult');
+
+            modal.classList.remove('hidden');
+            void modal.offsetWidth;
+            modal.classList.replace('opacity-0', 'opacity-100');
+            modalContent.classList.replace('scale-95', 'scale-100');
+
+            loading.classList.remove('hidden');
+            loading.classList.add('flex');
+            resultDiv.classList.add('hidden');
+            resultDiv.innerHTML = '';
+
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                const userLat = position.coords.latitude;
+                const userLon = position.coords.longitude;
+
+                // Add user marker to map
+                if (window.userMarker) map.removeLayer(window.userMarker);
+                window.userMarker = L.circleMarker([userLat, userLon], {
+                    radius: 10,
+                    fillColor: "#3b82f6",
+                    color: "#fff",
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map).bindPopup("Your Location").openPopup();
+                map.setView([userLat, userLon], 13);
+
+                const query = `
+                    [out:json];
+                    (
+                      nwr["amenity"="hospital"](around:20000, ${userLat}, ${userLon});
+                    );
+                    out center;
+                `;
+                const url = 'https://overpass-api.de/api/interpreter';
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        body: 'data=' + encodeURIComponent(query)
+                    });
+                    const data = await response.json();
+                    const hospitals = data.elements;
+
+                    loading.classList.add('hidden');
+                    loading.classList.remove('flex');
+                    resultDiv.classList.remove('hidden');
+
+                    if (hospitals.length === 0) {
+                        resultDiv.innerHTML = `<div class="bg-amber-500/10 text-amber-400 p-4 rounded-xl border border-amber-500/20 text-center font-medium">No hospitals found within 20km of your location.</div>`;
+                        return;
+                    }
+
+                    // Calculate distances and sort
+                    const sortedHospitals = hospitals.map(h => {
+                        const lat = h.lat || (h.center && h.center.lat);
+                        const lon = h.lon || (h.center && h.center.lon);
+                        return {
+                            ...h,
+                            dist: calculateDistance(userLat, userLon, lat, lon),
+                            lat: lat,
+                            lon: lon
+                        };
+                    }).sort((a, b) => a.dist - b.dist);
+
+                    const nearest = sortedHospitals[0];
+                    const name = nearest.tags.name || "Unnamed Hospital";
+                    const address = nearest.tags["addr:full"] || nearest.tags["addr:street"] || "Address not available";
+                    const phone = nearest.tags.phone || nearest.tags["contact:phone"] || "N/A";
+
+                    resultDiv.innerHTML = `
+                        <div class="space-y-6">
+                            <div class="bg-rose-500/10 p-5 rounded-2xl border border-rose-500/20">
+                                <h4 class="text-2xl font-bold text-white mb-1">${name}</h4>
+                                <p class="text-rose-400 font-semibold flex items-center gap-2">
+                                    <i data-lucide="navigation" class="w-4 h-4"></i>
+                                    ${nearest.dist.toFixed(2)} km away
+                                </p>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 gap-4">
+                                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-700 flex items-start gap-3">
+                                    <i data-lucide="map-pin" class="w-5 h-5 text-slate-400 mt-1"></i>
+                                    <div>
+                                        <p class="text-xs text-slate-500 uppercase font-bold tracking-wider">Address</p>
+                                        <p class="text-slate-200">${address}</p>
+                                    </div>
+                                </div>
+                                <div class="bg-slate-900/50 p-4 rounded-xl border border-slate-700 flex items-start gap-3">
+                                    <i data-lucide="phone" class="w-5 h-5 text-slate-400 mt-1"></i>
+                                    <div>
+                                        <p class="text-xs text-slate-500 uppercase font-bold tracking-wider">Contact</p>
+                                        <p class="text-slate-200">${phone}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${nearest.lat},${nearest.lon}', '_blank')" 
+                                class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2">
+                                <i data-lucide="external-link" class="w-5 h-5"></i>
+                                Get Directions
+                            </button>
+                        </div>
+                    `;
+
+                    // Add hospital marker to map
+                    if (window.hospitalMarker) map.removeLayer(window.hospitalMarker);
+                    window.hospitalMarker = L.marker([nearest.lat, nearest.lon], {
+                        icon: L.icon({
+                            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                            iconSize: [25, 41],
+                            iconAnchor: [12, 41],
+                            popupAnchor: [1, -34],
+                            shadowSize: [41, 41]
+                        })
+                    }).addTo(map).bindPopup(`<b>${name}</b><br>${nearest.dist.toFixed(2)} km away`).openPopup();
+                    
+                    lucide.createIcons();
+
+                } catch (e) {
+                    console.error(e);
+                    loading.classList.add('hidden');
+                    loading.classList.remove('flex');
+                    resultDiv.classList.remove('hidden');
+                    resultDiv.innerHTML = `<div class="bg-red-500/10 text-red-400 p-4 rounded-xl border border-red-500/20 text-center font-medium">Failed to fetch hospital data. Please try again.</div>`;
+                }
+            }, (error) => {
+                console.error(error);
+                loading.classList.add('hidden');
+                loading.classList.remove('flex');
+                resultDiv.classList.remove('hidden');
+                resultDiv.innerHTML = `<div class="bg-red-500/10 text-red-400 p-4 rounded-xl border border-red-500/20 text-center font-medium">Location access denied or unavailable.</div>`;
+            });
+        }
+
+        function closeHospitalModal() {
+            const modal = document.getElementById('hospitalModal');
+            const modalContent = document.getElementById('hospitalModalContent');
+
+            modal.classList.replace('opacity-100', 'opacity-0');
+            modalContent.classList.replace('scale-100', 'scale-95');
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+    </script>
+
+    <!-- AI Modal Overlay -->
+    <div id="aiModal"
+        class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="glass-card bg-slate-800 border border-slate-600 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300"
+            id="aiModalContent">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+                        <i data-lucide="bot" class="w-5 h-5 text-blue-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-100 flex items-center gap-2">AI Health Assistant <span
+                                class="bg-blue-600 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full text-white">Relational
+                                AQI</span></h3>
+                    </div>
+                </div>
+                <button onclick="closeAIModal()" class="text-slate-400 hover:text-white transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <!-- Body -->
+            <div class="p-6 max-h-[70vh] overflow-y-auto" id="aiModalBody">
+                <div id="aiLoading" class="flex flex-col items-center justify-center py-10">
+                    <div class="loader w-10 h-10 border-4 border-slate-700 border-l-blue-500 rounded-full animate-spin flex"
+                        style="display:block;"></div>
+                    <p class="text-slate-400 mt-4 animate-pulse">Analyzing health impacts with Relational AQI...</p>
+                </div>
+                <div id="aiResponse" class="hidden text-slate-300 space-y-4 text-sm leading-relaxed">
+                    <!-- Response will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Hospital Modal Overlay -->
+    <div id="hospitalModal"
+        class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="glass-card bg-slate-800 border border-slate-600 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300"
+            id="hospitalModalContent">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-rose-500/20 flex items-center justify-center">
+                        <i data-lucide="hospital" class="w-5 h-5 text-rose-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-100">Nearest Hospital</h3>
+                    </div>
+                </div>
+                <button onclick="closeHospitalModal()" class="text-slate-400 hover:text-white transition-colors">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+            <!-- Body -->
+            <div class="p-6">
+                <div id="hospitalLoading" class="flex flex-col items-center justify-center py-10">
+                    <div class="loader w-10 h-10 border-4 border-slate-700 border-l-rose-500 rounded-full animate-spin flex"
+                        style="display:block;"></div>
+                    <p class="text-slate-400 mt-4">Locating nearest medical facilities...</p>
+                </div>
+                <div id="hospitalResult" class="hidden">
+                    <!-- Hospital info will be injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
