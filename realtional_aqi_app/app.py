@@ -6,6 +6,9 @@ from datetime import datetime, timedelta
 import traceback
 import os
 import google.generativeai as genai
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -21,7 +24,7 @@ except Exception as e:
     model = None
     print(f"Error loading model: {e}")
 
-WEATHER_API_KEY = '6d808b6122f74abfae5140053263004'
+WEATHER_API_KEY = os.getenv('WEATHER_API_KEY')
 
 def get_lat_lon(city):
     # Try WeatherAPI search first
@@ -155,15 +158,13 @@ def ai_advice():
     if not disease or not aqi:
         return jsonify({"error": "Missing disease or AQI"}), 400
         
-    api_key = "AIzaSyBsLmFNtyvJ4t1PyAsN9uEDX-f72kF82_A"
-    
+    api_key = os.getenv('GEMINI_API_KEY')
     prompt = f"Provide the preventions, symptoms, and consequences of {disease} when the Air Quality Index (AQI) is {aqi}. Please be short, concise, and use plain formatting without heavy markdown."
     
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}]
-    }
-    
     try:
+        if not api_key:
+            return jsonify({"error": "AI API Key missing. Please set GEMINI_API_KEY environment variable."}), 500
+            
         genai.configure(api_key=api_key)
         
         # Try gemini-2.5-flash as a primary choice

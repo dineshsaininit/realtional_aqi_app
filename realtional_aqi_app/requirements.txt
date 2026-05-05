@@ -6,3 +6,4 @@ google-generativeai
 xgboost
 scikit-learn
 gunicorn
+python-dotenv

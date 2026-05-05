@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -11,7 +12,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-        
+
         body {
             font-family: 'Inter', sans-serif;
             background-color: #000000;
@@ -36,7 +37,9 @@
 
         .app-header {
             position: fixed;
-            top: 0; left: 0; right: 0;
+            top: 0;
+            left: 0;
+            right: 0;
             z-index: 50;
             background: rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(25px);
@@ -59,23 +62,36 @@
             width: 100%;
             height: 220px;
         }
-        
-        #map, #historicalMap {
+
+        #map,
+        #historicalMap {
             border-radius: 20px;
             z-index: 10;
         }
-        #map { height: 200px; }
-        #historicalMap { height: 280px; }
+
+        #map {
+            height: 200px;
+        }
+
+        #historicalMap {
+            height: 280px;
+        }
 
         .spinner {
-            width: 20px; height: 20px;
-            border: 2px solid rgba(255,255,255,0.3);
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
             border-radius: 50%;
             border-top-color: #fff;
             animation: spin 0.8s linear infinite;
             display: none;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
 
         .chips-container {
             display: flex;
@@ -84,60 +100,95 @@
             padding-bottom: 4px;
             scroll-snap-type: x mandatory;
         }
+
         .chip {
             flex: 0 0 auto;
             scroll-snap-align: start;
             padding: 8px 18px;
             border-radius: 99px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            font-size: 13px; font-weight: 600;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 13px;
+            font-weight: 600;
             color: #a1a1aa;
             transition: all 0.2s ease;
         }
+
         .chip.active {
             background: rgba(59, 130, 246, 0.2);
             border-color: #3b82f6;
             color: #60a5fa;
         }
 
-        .fade-in-up { animation: fadeInUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+        .fade-in-up {
+            animation: fadeInUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        }
+
         @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         /* Bottom Sheet Animation */
         .sheet-overlay {
-            opacity: 0; transition: opacity 0.3s ease;
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
-        .sheet-overlay.active { opacity: 1; }
+
+        .sheet-overlay.active {
+            opacity: 1;
+        }
+
         .sheet-content {
-            transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-        .sheet-content.active { transform: translateY(0); }
+
+        .sheet-content.active {
+            transform: translateY(0);
+        }
 
         .disease-tag {
-            display: inline-flex; align-items: center; gap: 4px;
-            background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3);
-            color: #fca5a5; border-radius: 99px; padding: 4px 12px; font-size: 11px; font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            border-radius: 99px;
+            padding: 4px 12px;
+            font-size: 11px;
+            font-weight: 700;
         }
 
         .advisory-card {
-            border-radius: 20px; padding: 16px; margin-bottom: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(0, 0, 0, 0.3);
         }
     </style>
 </head>
+
 <body>
 
     <header class="app-header flex items-center justify-between">
         <div class="flex-1 mr-3 relative">
             <i data-lucide="map-pin" class="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500 w-4 h-4"></i>
-            <select id="cityInput" onchange="fetchData()" class="w-full bg-white/10 text-white text-[15px] font-bold rounded-2xl pl-10 pr-4 py-3.5 appearance-none outline-none focus:bg-white/15 transition-colors">
+            <select id="cityInput" onchange="fetchData()"
+                class="w-full bg-white/10 text-white text-[15px] font-bold rounded-2xl pl-10 pr-4 py-3.5 appearance-none outline-none focus:bg-white/15 transition-colors">
             </select>
         </div>
-        <button onclick="fetchData()" class="w-[52px] h-[52px] flex-shrink-0 bg-blue-600 rounded-2xl flex items-center justify-center text-white active:scale-90 transition-transform shadow-[0_0_15px_rgba(37,99,235,0.4)]">
+        <button onclick="fetchData()"
+            class="w-[52px] h-[52px] flex-shrink-0 bg-blue-600 rounded-2xl flex items-center justify-center text-white active:scale-90 transition-transform shadow-[0_0_15px_rgba(37,99,235,0.4)]">
             <i data-lucide="refresh-cw" class="w-5 h-5" id="refreshIcon"></i>
             <div id="loader" class="spinner"></div>
         </button>
@@ -148,7 +199,7 @@
         <div class="fade-in-up flex flex-col items-center mt-2" style="animation-delay: 0.1s;">
             <h1 class="text-3xl font-black text-white text-center" id="locName">Location</h1>
             <p class="text-zinc-500 text-sm font-semibold mt-0.5 mb-6" id="locCountry">--</p>
-            
+
             <div class="grid grid-cols-2 gap-3 w-full">
                 <div class="glass-panel p-6 text-center relative overflow-hidden flex flex-col justify-center">
                     <div class="absolute -right-4 -top-4 w-20 h-20 bg-blue-500/20 rounded-full blur-2xl"></div>
@@ -165,7 +216,8 @@
 
         <!-- Emergency Action -->
         <div class="fade-in-up" style="animation-delay: 0.15s;">
-            <button onclick="findNearestHospital()" class="w-full bg-gradient-to-r from-rose-600 to-red-500 rounded-[24px] py-4 px-6 flex items-center justify-center gap-3 font-bold text-[15px] shadow-[0_8px_20px_rgba(225,29,72,0.25)] active:scale-[0.97] transition-transform">
+            <button onclick="findNearestHospital()"
+                class="w-full bg-gradient-to-r from-rose-600 to-red-500 rounded-[24px] py-4 px-6 flex items-center justify-center gap-3 font-bold text-[15px] shadow-[0_8px_20px_rgba(225,29,72,0.25)] active:scale-[0.97] transition-transform">
                 <i data-lucide="stethoscope" class="w-5 h-5"></i>
                 Emergency Hospital Contact
             </button>
@@ -191,24 +243,33 @@
                         <h2 class="text-base font-bold">AI Health Advisor</h2>
                     </div>
                 </div>
-                
+
                 <div class="chips-container mb-4" id="conditionPills">
-                    <button onclick="toggleCondition('asthma'); fetchAIAdvice('Asthma')" data-cond="asthma" class="chip">Asthma</button>
-                    <button onclick="toggleCondition('copd'); fetchAIAdvice('COPD')" data-cond="copd" class="chip">COPD</button>
-                    <button onclick="toggleCondition('heart'); fetchAIAdvice('Heart Disease')" data-cond="heart" class="chip">Heart</button>
-                    <button onclick="toggleCondition('diabetes'); fetchAIAdvice('Diabetes')" data-cond="diabetes" class="chip">Diabetes</button>
-                    <button onclick="toggleCondition('elderly'); fetchAIAdvice('Elderly (65+)')" data-cond="elderly" class="chip">Elderly</button>
-                    <button onclick="toggleCondition('children'); fetchAIAdvice('Children (<12)')" data-cond="children" class="chip">Children</button>
-                    <button onclick="toggleCondition('pregnant'); fetchAIAdvice('Pregnant')" data-cond="pregnant" class="chip">Pregnant</button>
+                    <button onclick="toggleCondition('asthma'); fetchAIAdvice('Asthma')" data-cond="asthma"
+                        class="chip">Asthma</button>
+                    <button onclick="toggleCondition('copd'); fetchAIAdvice('COPD')" data-cond="copd"
+                        class="chip">COPD</button>
+                    <button onclick="toggleCondition('heart'); fetchAIAdvice('Heart Disease')" data-cond="heart"
+                        class="chip">Heart</button>
+                    <button onclick="toggleCondition('diabetes'); fetchAIAdvice('Diabetes')" data-cond="diabetes"
+                        class="chip">Diabetes</button>
+                    <button onclick="toggleCondition('elderly'); fetchAIAdvice('Elderly (65+)')" data-cond="elderly"
+                        class="chip">Elderly</button>
+                    <button onclick="toggleCondition('children'); fetchAIAdvice('Children (<12)')" data-cond="children"
+                        class="chip">Children</button>
+                    <button onclick="toggleCondition('pregnant'); fetchAIAdvice('Pregnant')" data-cond="pregnant"
+                        class="chip">Pregnant</button>
                 </div>
 
                 <div id="advisoryOutput" class="text-sm text-zinc-400">
-                    <div class="bg-white/5 rounded-2xl p-4 text-center border border-white/5">Select a condition above for personalized advice.</div>
+                    <div class="bg-white/5 rounded-2xl p-4 text-center border border-white/5">Select a condition above
+                        for personalized advice.</div>
                 </div>
             </div>
 
             <div class="glass-panel p-5">
-                <h3 class="font-bold text-white mb-3 text-xs uppercase tracking-widest text-zinc-400">Associated Risks</h3>
+                <h3 class="font-bold text-white mb-3 text-xs uppercase tracking-widest text-zinc-400">Associated Risks
+                </h3>
                 <div id="diseaseList" class="flex flex-wrap gap-2 mb-5"></div>
                 <h3 class="font-bold text-white mb-3 text-xs uppercase tracking-widest text-zinc-400">Preventions</h3>
                 <ul id="preventionList" class="space-y-3 text-sm text-zinc-300"></ul>
@@ -217,7 +278,8 @@
 
         <!-- 7 Day numerical forecast -->
         <div class="fade-in-up glass-panel p-5" style="animation-delay: 0.25s;">
-            <h3 class="font-bold text-white mb-4 flex items-center gap-2"><i data-lucide="calendar-days" class="w-4 h-4 text-blue-400"></i> 7-Day Forecast</h3>
+            <h3 class="font-bold text-white mb-4 flex items-center gap-2"><i data-lucide="calendar-days"
+                    class="w-4 h-4 text-blue-400"></i> 7-Day Forecast</h3>
             <div id="numericalForecast" class="space-y-2"></div>
         </div>
 
@@ -229,10 +291,18 @@
         <!-- Charts Section -->
         <div class="fade-in-up space-y-3 mt-2" style="animation-delay: 0.35s;">
             <h2 class="text-lg font-black px-1 mb-2">Analytics</h2>
-            <div class="glass-panel p-2 pb-0"><div id="aqiChart" class="chart-container"></div></div>
-            <div class="glass-panel p-2 pb-0"><div id="barChart" class="chart-container"></div></div>
-            <div class="glass-panel p-2 pb-0"><div id="relationChart" class="chart-container"></div></div>
-            <div class="glass-panel p-2 pb-0"><div id="histChart" class="chart-container"></div></div>
+            <div class="glass-panel p-2 pb-0">
+                <div id="aqiChart" class="chart-container"></div>
+            </div>
+            <div class="glass-panel p-2 pb-0">
+                <div id="barChart" class="chart-container"></div>
+            </div>
+            <div class="glass-panel p-2 pb-0">
+                <div id="relationChart" class="chart-container"></div>
+            </div>
+            <div class="glass-panel p-2 pb-0">
+                <div id="histChart" class="chart-container"></div>
+            </div>
         </div>
 
         <!-- Regional Map -->
@@ -243,22 +313,27 @@
             </div>
             <div id="historicalMap"></div>
         </div>
-        
+
         <!-- Team Footer -->
         <div class="fade-in-up text-center mt-10 mb-6" style="animation-delay: 0.5s;">
             <p class="text-zinc-600 text-[10px] font-black uppercase tracking-[0.2em]">Relational AQI</p>
-            <p class="text-zinc-700 text-[9px] mt-1 uppercase font-bold">DBMS Project • Monitored by PKK Sir</p>
+            <p class="text-zinc-700 text-[9px] mt-1 uppercase font-bold">DATA WAREHOUSEING AND MINING PROJECT</p>
         </div>
     </main>
 
     <!-- Bottom Sheet Modal for AI -->
     <div id="aiModal" class="fixed inset-0 z-[100] hidden">
-        <div id="aiOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm sheet-overlay" onclick="closeAIModal()"></div>
-        <div id="aiModalContent" class="absolute bottom-0 left-0 right-0 bg-[#121214] rounded-t-[32px] p-6 border-t border-white/10 max-h-[85vh] flex flex-col sheet-content shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+        <div id="aiOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm sheet-overlay"
+            onclick="closeAIModal()"></div>
+        <div id="aiModalContent"
+            class="absolute bottom-0 left-0 right-0 bg-[#121214] rounded-t-[32px] p-6 border-t border-white/10 max-h-[85vh] flex flex-col sheet-content shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
             <div class="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-6"></div>
             <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-black flex items-center gap-2"><i data-lucide="sparkles" class="text-indigo-400 fill-indigo-400/20"></i> AI Advisor</h3>
-                <button onclick="closeAIModal()" class="bg-white/10 rounded-full p-2 active:scale-90 transition-transform"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <h3 class="text-xl font-black flex items-center gap-2"><i data-lucide="sparkles"
+                        class="text-indigo-400 fill-indigo-400/20"></i> AI Advisor</h3>
+                <button onclick="closeAIModal()"
+                    class="bg-white/10 rounded-full p-2 active:scale-90 transition-transform"><i data-lucide="x"
+                        class="w-5 h-5"></i></button>
             </div>
             <div class="overflow-y-auto pb-8 custom-scrollbar">
                 <div id="aiLoading" class="flex flex-col items-center justify-center py-12 hidden">
@@ -272,12 +347,17 @@
 
     <!-- Bottom Sheet Modal for Hospital -->
     <div id="hospitalModal" class="fixed inset-0 z-[100] hidden">
-        <div id="hospitalOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm sheet-overlay" onclick="closeHospitalModal()"></div>
-        <div id="hospitalModalContent" class="absolute bottom-0 left-0 right-0 bg-[#121214] rounded-t-[32px] p-6 border-t border-white/10 max-h-[85vh] flex flex-col sheet-content shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+        <div id="hospitalOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm sheet-overlay"
+            onclick="closeHospitalModal()"></div>
+        <div id="hospitalModalContent"
+            class="absolute bottom-0 left-0 right-0 bg-[#121214] rounded-t-[32px] p-6 border-t border-white/10 max-h-[85vh] flex flex-col sheet-content shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
             <div class="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-6"></div>
             <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-black flex items-center gap-2"><i data-lucide="hospital" class="text-rose-400 fill-rose-400/20"></i> Nearest Hospital</h3>
-                <button onclick="closeHospitalModal()" class="bg-white/10 rounded-full p-2 active:scale-90 transition-transform"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <h3 class="text-xl font-black flex items-center gap-2"><i data-lucide="hospital"
+                        class="text-rose-400 fill-rose-400/20"></i> Nearest Hospital</h3>
+                <button onclick="closeHospitalModal()"
+                    class="bg-white/10 rounded-full p-2 active:scale-90 transition-transform"><i data-lucide="x"
+                        class="w-5 h-5"></i></button>
             </div>
             <div class="overflow-y-auto pb-8">
                 <div id="hospitalLoading" class="flex flex-col items-center justify-center py-12 hidden">
@@ -321,12 +401,12 @@
                 { maxAqi: 200, risk: 'medium', badge: 'Moderate Risk', color: '#f59e0b', bg: 'rgba(245,158,11,.1)', tips: ['Use preventer inhaler.', 'Wear an N95 mask outdoors.'] },
                 { maxAqi: 9999, risk: 'high', badge: 'High Risk', color: '#ef4444', bg: 'rgba(239,68,68,.1)', tips: ['Stay indoors.', 'Run air purifier.', 'Keep rescue inhaler ready.'] }
             ],
-            copd: [ { maxAqi: 50, risk: 'low', badge: 'Safe', color: '#10b981', bg: 'rgba(16,185,129,.1)', tips: ['Good for a walk.'] }, { maxAqi: 200, risk: 'medium', badge: 'Moderate', color: '#f59e0b', bg: 'rgba(245,158,11,.1)', tips: ['Reduce outdoor time.'] }, { maxAqi: 9999, risk: 'high', badge: 'Danger', color: '#ef4444', bg: 'rgba(239,68,68,.1)', tips: ['Strictly indoors.'] } ],
-            heart: [ { maxAqi: 50, risk: 'low', badge: 'Safe', color: '#10b981', bg: 'rgba(16,185,129,.1)', tips: ['Normal activities.'] }, { maxAqi: 200, risk: 'medium', badge: 'Moderate', color: '#f59e0b', bg: 'rgba(245,158,11,.1)', tips: ['Avoid peak traffic.', 'Take meds.'] }, { maxAqi: 9999, risk: 'high', badge: 'Danger', color: '#ef4444', bg: 'rgba(239,68,68,.1)', tips: ['Stay indoors.', 'Rest.'] } ],
-            diabetes: [ { maxAqi: 100, risk: 'low', badge: 'Safe', color: '#10b981', bg: 'rgba(16,185,129,.1)', tips: ['Monitor glucose.'] }, { maxAqi: 9999, risk: 'high', badge: 'High Risk', color: '#ef4444', bg: 'rgba(239,68,68,.1)', tips: ['Stay indoors.', 'Check sugar frequently.'] } ],
-            elderly: [ { maxAqi: 100, risk: 'low', badge: 'Safe', color: '#10b981', bg: 'rgba(16,185,129,.1)', tips: ['Gentle walks.'] }, { maxAqi: 9999, risk: 'high', badge: 'High Risk', color: '#ef4444', bg: 'rgba(239,68,68,.1)', tips: ['Stay strictly indoors.', 'Use masks if needed.'] } ],
-            children: [ { maxAqi: 100, risk: 'low', badge: 'Safe', color: '#10b981', bg: 'rgba(16,185,129,.1)', tips: ['Play outside.'] }, { maxAqi: 200, risk: 'medium', badge: 'Moderate', color: '#f59e0b', bg: 'rgba(245,158,11,.1)', tips: ['Limit play to 20m.'] }, { maxAqi: 9999, risk: 'high', badge: 'Danger', color: '#ef4444', bg: 'rgba(239,68,68,.1)', tips: ['No outdoor play.'] } ],
-            pregnant: [ { maxAqi: 100, risk: 'low', badge: 'Safe', color: '#10b981', bg: 'rgba(16,185,129,.1)', tips: ['Light walks.'] }, { maxAqi: 9999, risk: 'high', badge: 'High Risk', color: '#ef4444', bg: 'rgba(239,68,68,.1)', tips: ['Stay indoors.', 'Avoid cooking fumes.'] } ]
+            copd: [{ maxAqi: 50, risk: 'low', badge: 'Safe', color: '#10b981', bg: 'rgba(16,185,129,.1)', tips: ['Good for a walk.'] }, { maxAqi: 200, risk: 'medium', badge: 'Moderate', color: '#f59e0b', bg: 'rgba(245,158,11,.1)', tips: ['Reduce outdoor time.'] }, { maxAqi: 9999, risk: 'high', badge: 'Danger', color: '#ef4444', bg: 'rgba(239,68,68,.1)', tips: ['Strictly indoors.'] }],
+            heart: [{ maxAqi: 50, risk: 'low', badge: 'Safe', color: '#10b981', bg: 'rgba(16,185,129,.1)', tips: ['Normal activities.'] }, { maxAqi: 200, risk: 'medium', badge: 'Moderate', color: '#f59e0b', bg: 'rgba(245,158,11,.1)', tips: ['Avoid peak traffic.', 'Take meds.'] }, { maxAqi: 9999, risk: 'high', badge: 'Danger', color: '#ef4444', bg: 'rgba(239,68,68,.1)', tips: ['Stay indoors.', 'Rest.'] }],
+            diabetes: [{ maxAqi: 100, risk: 'low', badge: 'Safe', color: '#10b981', bg: 'rgba(16,185,129,.1)', tips: ['Monitor glucose.'] }, { maxAqi: 9999, risk: 'high', badge: 'High Risk', color: '#ef4444', bg: 'rgba(239,68,68,.1)', tips: ['Stay indoors.', 'Check sugar frequently.'] }],
+            elderly: [{ maxAqi: 100, risk: 'low', badge: 'Safe', color: '#10b981', bg: 'rgba(16,185,129,.1)', tips: ['Gentle walks.'] }, { maxAqi: 9999, risk: 'high', badge: 'High Risk', color: '#ef4444', bg: 'rgba(239,68,68,.1)', tips: ['Stay strictly indoors.', 'Use masks if needed.'] }],
+            children: [{ maxAqi: 100, risk: 'low', badge: 'Safe', color: '#10b981', bg: 'rgba(16,185,129,.1)', tips: ['Play outside.'] }, { maxAqi: 200, risk: 'medium', badge: 'Moderate', color: '#f59e0b', bg: 'rgba(245,158,11,.1)', tips: ['Limit play to 20m.'] }, { maxAqi: 9999, risk: 'high', badge: 'Danger', color: '#ef4444', bg: 'rgba(239,68,68,.1)', tips: ['No outdoor play.'] }],
+            pregnant: [{ maxAqi: 100, risk: 'low', badge: 'Safe', color: '#10b981', bg: 'rgba(16,185,129,.1)', tips: ['Light walks.'] }, { maxAqi: 9999, risk: 'high', badge: 'High Risk', color: '#ef4444', bg: 'rgba(239,68,68,.1)', tips: ['Stay indoors.', 'Avoid cooking fumes.'] }]
         };
 
         const historicalData = [
@@ -408,10 +488,10 @@
             const predictions = res.data.predictions;
             const raw = res.data.raw_data;
             const todayAqiVal = Math.round(predictions[0].aqi);
-            
+
             document.getElementById('todayAqi').innerText = todayAqiVal;
             document.getElementById('todayTemp').innerText = raw[0].temperature;
-            
+
             updateHealthPanel(todayAqiVal);
 
             const numericalContainer = document.getElementById('numericalForecast');
@@ -498,7 +578,7 @@
             }
             let html = '';
             const condNames = { asthma: 'Asthma', copd: 'COPD', heart: 'Heart', diabetes: 'Diabetes', elderly: 'Elderly', children: 'Children', pregnant: 'Pregnant' };
-            
+
             selectedConditions.forEach(cond => {
                 const entry = getConditionAqiEntry(cond, currentAqi);
                 html += `
@@ -521,7 +601,7 @@
             const modal = document.getElementById(id);
             const overlay = modal.querySelector('.sheet-overlay');
             const content = modal.querySelector('.sheet-content');
-            
+
             modal.classList.remove('hidden');
             // trigger reflow
             void modal.offsetWidth;
@@ -534,21 +614,21 @@
             const modal = document.getElementById(id);
             const overlay = modal.querySelector('.sheet-overlay');
             const content = modal.querySelector('.sheet-content');
-            
+
             overlay.classList.remove('active');
             content.classList.remove('active');
             document.body.style.overflow = '';
-            
+
             setTimeout(() => modal.classList.add('hidden'), 400);
         }
 
         async function fetchAIAdvice(disease) {
             if (!currentAqi) return;
-            
+
             openSheet('aiModal');
             const loading = document.getElementById('aiLoading');
             const resp = document.getElementById('aiResponse');
-            
+
             loading.classList.remove('hidden');
             resp.classList.add('hidden');
             resp.innerHTML = '';
@@ -559,7 +639,7 @@
                     body: JSON.stringify({ disease: disease, aqi: currentAqi })
                 });
                 const result = await response.json();
-                
+
                 loading.classList.add('hidden');
                 resp.classList.remove('hidden');
 
@@ -583,11 +663,11 @@
 
         function findNearestHospital() {
             if (!navigator.geolocation) { alert("Geolocation not supported"); return; }
-            
+
             openSheet('hospitalModal');
             const loading = document.getElementById('hospitalLoading');
             const resultDiv = document.getElementById('hospitalResult');
-            
+
             loading.classList.remove('hidden');
             resultDiv.classList.add('hidden');
 
@@ -597,7 +677,7 @@
                     const q = `[out:json];(nwr["amenity"="hospital"](around:20000, ${lat}, ${lon}););out center;`;
                     const res = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(q) });
                     const data = await res.json();
-                    
+
                     loading.classList.add('hidden');
                     resultDiv.classList.remove('hidden');
 
@@ -610,7 +690,7 @@
                         const hLat = h.lat || (h.center && h.center.lat);
                         const hLon = h.lon || (h.center && h.center.lon);
                         return { ...h, lat: hLat, lon: hLon, dist: getDist(lat, lon, hLat, hLon) };
-                    }).sort((a,b) => a.dist - b.dist);
+                    }).sort((a, b) => a.dist - b.dist);
 
                     const n = sorted[0];
                     const name = n.tags.name || "Unnamed Hospital";
@@ -639,9 +719,10 @@
 
         function getDist(lat1, lon1, lat2, lon2) {
             const p = Math.PI / 180, c = Math.cos;
-            const a = 0.5 - c((lat2 - lat1) * p)/2 + c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p))/2;
+            const a = 0.5 - c((lat2 - lat1) * p) / 2 + c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p)) / 2;
             return 12742 * Math.asin(Math.sqrt(a));
         }
     </script>
 </body>
+
 </html>
