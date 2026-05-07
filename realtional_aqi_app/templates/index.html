@@ -61,6 +61,8 @@
         .chart-container {
             width: 100%;
             height: 220px;
+            min-height: 220px;
+            display: block;
         }
 
         #map,
@@ -441,18 +443,52 @@
             L.circleMarker([p[0], p[1]], { color: p[5], fillColor: p[5], fillOpacity: 0.8, radius: 5, weight: 2 }).addTo(histMap);
         });
 
-        const layoutConfig = {
-            paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
-            font: { color: '#71717a', size: 10, family: 'Inter' },
-            margin: { t: 30, b: 20, l: 30, r: 10 },
-            xaxis: { gridcolor: 'rgba(255,255,255,0.05)', zeroline: false },
-            yaxis: { gridcolor: 'rgba(255,255,255,0.05)', zeroline: false }
-        };
+        const CHART_HEIGHT = 220;
 
-        document.addEventListener('DOMContentLoaded', () => {
+        function getLayoutConfig(title) {
+            const w = window.innerWidth > 0 ? window.innerWidth - 32 : 320;
+            return {
+                paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#71717a', size: 10, family: 'Inter' },
+                margin: { t: 35, b: 25, l: 35, r: 12 },
+                xaxis: { gridcolor: 'rgba(255,255,255,0.05)', zeroline: false },
+                yaxis: { gridcolor: 'rgba(255,255,255,0.05)', zeroline: false },
+                autosize: true,
+                width: w,
+                height: CHART_HEIGHT,
+                title: { text: title, font: { color: '#fff', size: 12 } }
+            };
+        }
+
+        const CHART_IDS = ['aqiChart', 'barChart', 'relationChart', 'histChart'];
+
+        function forceResizeCharts() {
+            CHART_IDS.forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el._fullLayout) {
+                    Plotly.relayout(id, { width: window.innerWidth - 32, height: CHART_HEIGHT });
+                }
+            });
+        }
+
+        window.addEventListener('resize', forceResizeCharts);
+
+        let _appInited = false;
+        function initApp() {
+            if (_appInited) return;
+            _appInited = true;
             populateDropdown();
             fetchData();
-        });
+        }
+
+        // Fire on DOMContentLoaded, or immediately if already past it
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+        // Final safety net for Capacitor WebView
+        window.addEventListener('load', initApp);
 
         async function fetchData() {
             const city = document.getElementById('cityInput').value.trim();
@@ -515,27 +551,33 @@
             const temps = raw.map(r => r.temperature);
             const pm25 = raw.map(r => r.PM2_5);
 
+            const plotConfig = { displayModeBar: false, responsive: true, staticPlot: false };
+
             Plotly.newPlot('aqiChart', [{
                 x: dates, y: aqis, type: 'scatter', mode: 'lines+markers',
                 line: { shape: 'spline', color: '#3b82f6', width: 3 },
                 marker: { size: 6, color: '#60a5fa' },
                 fill: 'tozeroy', fillcolor: 'rgba(59, 130, 246, 0.15)'
-            }], { ...layoutConfig, title: { text: 'AQI Trend', font: { color: '#fff', size: 12 } } }, { displayModeBar: false, responsive: true });
+            }], getLayoutConfig('AQI Trend'), plotConfig);
 
             Plotly.newPlot('relationChart', [{
                 x: temps, y: pm25, mode: 'markers', type: 'scatter',
                 marker: { size: 8, color: aqis, colorscale: 'Viridis', showscale: false }
-            }], { ...layoutConfig, title: { text: 'Temp vs PM2.5', font: { color: '#fff', size: 12 } } }, { displayModeBar: false, responsive: true });
+            }], getLayoutConfig('Temp vs PM2.5'), plotConfig);
 
             Plotly.newPlot('histChart', [{
                 x: raw.map(r => r.wind_speed_num), type: 'histogram',
                 marker: { color: '#10b981' }, opacity: 0.8
-            }], { ...layoutConfig, title: { text: 'Wind Dist', font: { color: '#fff', size: 12 } } }, { displayModeBar: false, responsive: true });
+            }], getLayoutConfig('Wind Distribution'), plotConfig);
 
             Plotly.newPlot('barChart', [
                 { x: dates, y: pm25, name: 'PM2.5', type: 'bar', marker: { color: '#f59e0b' } },
                 { x: dates, y: raw.map(r => r.PM10), name: 'PM10', type: 'bar', marker: { color: '#ef4444' } }
-            ], { ...layoutConfig, barmode: 'group', title: { text: 'Pollutants', font: { color: '#fff', size: 12 } }, showlegend: false }, { displayModeBar: false, responsive: true });
+            ], { ...getLayoutConfig('Pollutants'), barmode: 'group', showlegend: false }, plotConfig);
+
+            // Force resize after paint — critical for mobile WebViews
+            setTimeout(forceResizeCharts, 300);
+            setTimeout(forceResizeCharts, 1000);
         }
 
         function getAqiBucket(aqi) { return AQI_HEALTH_DATA.find(b => aqi >= b.min && aqi <= b.max) || AQI_HEALTH_DATA[0]; }
@@ -738,16 +780,30 @@
                 if (timeSpan) timeSpan.innerText = timeLeft;
                 if (timeLeft <= 0) {
                     cancelAutoCall();
-                    if (window.Capacitor && window.Capacitor.Plugins.AutoCaller) {
+                    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AutoCaller) {
                         window.Capacitor.Plugins.AutoCaller.callNumber({ number: '112' }).catch(e => {
                             console.error("AutoCaller failed:", e);
-                            window.location.href = 'tel:112';
+                            _dialEmergency();
                         });
                     } else {
-                        window.location.href = 'tel:112';
+                        _dialEmergency();
                     }
                 }
             }, 1000);
+        }
+
+        function _dialEmergency() {
+            const isAndroid = /android/i.test(navigator.userAgent);
+            if (isAndroid) {
+                const a = document.createElement('a');
+                a.href = 'intent://dial/112#Intent;scheme=tel;action=android.intent.action.DIAL;end';
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => document.body.removeChild(a), 500);
+            } else {
+                window.open('tel:112', '_system');
+            }
         }
 
         function closeHospitalModal() {
