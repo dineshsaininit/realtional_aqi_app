@@ -741,15 +741,23 @@
                     resultDiv.innerHTML = `
                         <div id="autoCallSection" class="bg-rose-500/10 p-4 rounded-2xl border border-rose-500/20 mb-4 text-center">
                             <p class="text-white font-bold mb-2">Calling emergency (112) in <span id="autoCallTime" class="text-rose-400 text-2xl mx-1">10</span>s</p>
-                            <button onclick="cancelAutoCall()" class="px-6 py-2 bg-zinc-800 active:bg-zinc-700 border border-white/10 text-white rounded-xl text-sm font-bold transition-colors">
-                                Cancel Call
-                            </button>
+                            <div class="flex gap-3 justify-center mt-2">
+                                <button onclick="_dialEmergency()" class="px-6 py-2 bg-rose-600 active:bg-rose-700 text-white rounded-xl text-sm font-bold transition-colors">
+                                    📞 Call 112 Now
+                                </button>
+                                <button onclick="cancelAutoCall()" class="px-6 py-2 bg-zinc-800 active:bg-zinc-700 border border-white/10 text-white rounded-xl text-sm font-bold transition-colors">
+                                    Cancel
+                                </button>
+                            </div>
                         </div>
                         <div class="bg-white/5 p-5 rounded-2xl border border-white/5 mb-4 text-center">
                             <h4 class="text-xl font-bold text-white mb-2">${name}</h4>
                             <p class="text-rose-400 font-bold mb-4">${n.dist.toFixed(2)} km away</p>
                             <p class="text-zinc-400 text-sm mb-4">${address}</p>
-                            <button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${n.lat},${n.lon}', '_blank')" class="w-full bg-rose-600 active:bg-rose-700 text-white py-3 rounded-xl font-bold transition-colors">
+                            <button onclick="_dialEmergency()" class="w-full bg-rose-600 active:bg-rose-700 text-white py-3 rounded-xl font-bold mb-3 transition-colors">
+                                📞 Call Emergency 112
+                            </button>
+                            <button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${n.lat},${n.lon}', '_blank')" class="w-full bg-zinc-700 active:bg-zinc-600 text-white py-3 rounded-xl font-bold transition-colors">
                                 Get Directions
                             </button>
                         </div>
@@ -793,16 +801,17 @@
         }
 
         function _dialEmergency() {
-            const isAndroid = /android/i.test(navigator.userAgent);
-            if (isAndroid) {
+            // Most reliable method inside Capacitor / Android WebView
+            try {
+                window.location.href = 'tel:112';
+            } catch (e) {
+                // Fallback: create an anchor and click it
                 const a = document.createElement('a');
-                a.href = 'intent://dial/112#Intent;scheme=tel;action=android.intent.action.DIAL;end';
+                a.href = 'tel:112';
                 a.style.display = 'none';
                 document.body.appendChild(a);
                 a.click();
                 setTimeout(() => document.body.removeChild(a), 500);
-            } else {
-                window.open('tel:112', '_system');
             }
         }
 
