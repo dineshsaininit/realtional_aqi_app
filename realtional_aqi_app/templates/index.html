@@ -317,7 +317,7 @@
         <!-- Team Footer -->
         <div class="fade-in-up text-center mt-10 mb-6" style="animation-delay: 0.5s;">
             <p class="text-zinc-600 text-[10px] font-black uppercase tracking-[0.2em]">Relational AQI</p>
-            <p class="text-zinc-700 text-[9px] mt-1 uppercase font-bold">DATA WAREHOUSEING AND MINING PROJECT</p>
+            <p class="text-zinc-700 text-[9px] mt-1 uppercase font-bold">DBMS PROJECT | PKK SIR</p>
         </div>
     </main>
 
@@ -697,6 +697,12 @@
                     const address = n.tags["addr:full"] || "Address unavailable";
 
                     resultDiv.innerHTML = `
+                        <div id="autoCallSection" class="bg-rose-500/10 p-4 rounded-2xl border border-rose-500/20 mb-4 text-center">
+                            <p class="text-white font-bold mb-2">Calling emergency (112) in <span id="autoCallTime" class="text-rose-400 text-2xl mx-1">10</span>s</p>
+                            <button onclick="cancelAutoCall()" class="px-6 py-2 bg-zinc-800 active:bg-zinc-700 border border-white/10 text-white rounded-xl text-sm font-bold transition-colors">
+                                Cancel Call
+                            </button>
+                        </div>
                         <div class="bg-white/5 p-5 rounded-2xl border border-white/5 mb-4 text-center">
                             <h4 class="text-xl font-bold text-white mb-2">${name}</h4>
                             <p class="text-rose-400 font-bold mb-4">${n.dist.toFixed(2)} km away</p>
@@ -706,6 +712,7 @@
                             </button>
                         </div>
                     `;
+                    startAutoCall();
                 } catch (e) {
                     loading.classList.add('hidden'); resultDiv.classList.remove('hidden');
                     resultDiv.innerHTML = `<div class="bg-red-500/10 text-red-400 p-4 rounded-xl text-center">Failed to fetch data.</div>`;
@@ -715,7 +722,31 @@
                 resultDiv.innerHTML = `<div class="bg-red-500/10 text-red-400 p-4 rounded-xl text-center">Location access denied.</div>`;
             });
         }
-        function closeHospitalModal() { closeSheet('hospitalModal'); }
+
+        let autoCallInterval = null;
+        function cancelAutoCall() {
+            if (autoCallInterval) clearInterval(autoCallInterval);
+            autoCallInterval = null;
+            const acSec = document.getElementById('autoCallSection');
+            if (acSec) acSec.style.display = 'none';
+        }
+        function startAutoCall() {
+            let timeLeft = 10;
+            autoCallInterval = setInterval(() => {
+                timeLeft--;
+                const timeSpan = document.getElementById('autoCallTime');
+                if (timeSpan) timeSpan.innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    cancelAutoCall();
+                    window.location.href = 'tel:112';
+                }
+            }, 1000);
+        }
+
+        function closeHospitalModal() {
+            cancelAutoCall();
+            closeSheet('hospitalModal');
+        }
 
         function getDist(lat1, lon1, lat2, lon2) {
             const p = Math.PI / 180, c = Math.cos;
