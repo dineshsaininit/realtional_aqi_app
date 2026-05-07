@@ -738,7 +738,14 @@
                 if (timeSpan) timeSpan.innerText = timeLeft;
                 if (timeLeft <= 0) {
                     cancelAutoCall();
-                    window.location.href = 'tel:112';
+                    if (window.Capacitor && window.Capacitor.Plugins.AutoCaller) {
+                        window.Capacitor.Plugins.AutoCaller.callNumber({ number: '112' }).catch(e => {
+                            console.error("AutoCaller failed:", e);
+                            window.location.href = 'tel:112';
+                        });
+                    } else {
+                        window.location.href = 'tel:112';
+                    }
                 }
             }, 1000);
         }
